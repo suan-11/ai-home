@@ -1,0 +1,27 @@
+{
+  "ai": {
+    "api_base": "https://api.deepseek.com/v1",
+    "api_key": "REPLACE_ME",
+    "model": "deepseek-v4-flash",
+    "max_tokens": 512,
+    "temperature": 0.8
+  },
+  "display": {
+    "window_size": [
+      480,
+      360
+    ],
+    "pixel_scale": 2,
+    "fps": 30
+  },
+  "audio": {
+    "bgm_volume": 0.6,
+    "sfx_volume": 0.8,
+    "tts_enabled": false
+  },
+  "gameplay": {
+    "active_char": "char_01",
+    "active_room": "default",
+    "state_tick_interval": 5.0
+  }
+}

@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/GameMain.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/char/char_controller.gd" id="2_char"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="Room" type="Node2D" parent="."]
+
+[node name="Character" type="CharacterBody2D" parent="Room"]
+position = Vector2(120, 92)
+script = ExtResource("2_char")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Room/Character"]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="StatusLabel" type="Label" parent="UI"]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 472.0
+offset_bottom = 34.0
+text = "Phase 1 加载中…"

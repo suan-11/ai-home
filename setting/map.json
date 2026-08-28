@@ -1,0 +1,100 @@
+{
+  "grid_size": [
+    16,
+    12
+  ],
+  "cell_size": 16,
+  "default_weight": 1.0,
+  "zones": {
+    "bed_area": {
+      "cells": [
+        [
+          10,
+          1
+        ],
+        [
+          10,
+          2
+        ],
+        [
+          11,
+          1
+        ],
+        [
+          11,
+          2
+        ]
+      ],
+      "base_weight": 1.0
+    },
+    "desk_area": {
+      "cells": [
+        [
+          3,
+          4
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          4
+        ],
+        [
+          4,
+          5
+        ]
+      ],
+      "base_weight": 1.0
+    },
+    "window_area": {
+      "cells": [
+        [
+          0,
+          6
+        ],
+        [
+          0,
+          7
+        ],
+        [
+          1,
+          6
+        ],
+        [
+          1,
+          7
+        ]
+      ],
+      "base_weight": 1.0
+    }
+  },
+  "state_weight_modifiers": {
+    "hungry": {
+      "desk_area": 3.0
+    },
+    "sleepy": {
+      "bed_area": 5.0
+    },
+    "bored": {
+      "window_area": 2.5,
+      "desk_area": 1.5
+    },
+    "happy": {
+      "default": 1.2
+    }
+  },
+  "time_weight_modifiers": {
+    "night_22_06": {
+      "bed_area": 4.0,
+      "desk_area": 0.3
+    },
+    "morning_06_12": {
+      "window_area": 2.0
+    },
+    "afternoon_12_18": {
+      "desk_area": 2.0
+    }
+  }
+}
