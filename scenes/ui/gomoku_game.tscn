@@ -19,13 +19,13 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -120.0
-offset_top = -222.0
-offset_right = 120.0
-offset_bottom = -188.0
+offset_left = -200.0
+offset_top = -176.0
+offset_right = 200.0
+offset_bottom = -142.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "AI 五子棋"
+text = "标准五子棋"
 horizontal_alignment = 1
 
 [node name="StatusLabel" type="Label" parent="."]
@@ -35,10 +35,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -170.0
-offset_top = 214.0
-offset_right = 170.0
-offset_bottom = 246.0
+offset_left = -200.0
+offset_top = 150.0
+offset_right = 200.0
+offset_bottom = 178.0
 grow_horizontal = 2
 grow_vertical = 2
 text = "你的回合：点击交叉点落子"
@@ -51,10 +51,10 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -180.0
-offset_top = 172.0
-offset_right = -24.0
-offset_bottom = 208.0
+offset_left = 120.0
+offset_top = -52.0
+offset_right = 206.0
+offset_bottom = -16.0
 grow_horizontal = 2
 grow_vertical = 2
 text = "重新开始"
@@ -66,10 +66,53 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = 24.0
-offset_top = 172.0
-offset_right = 180.0
-offset_bottom = 208.0
+offset_left = 120.0
+offset_top = 0.0
+offset_right = 206.0
+offset_bottom = 36.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "返回电脑"
+text = "退出"
+
+[node name="ResultPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = -90.0
+offset_right = 130.0
+offset_bottom = 90.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="ResultLabel" type="Label" parent="ResultPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 14.0
+offset_right = -12.0
+offset_bottom = 48.0
+text = "结果"
+horizontal_alignment = 1
+
+[node name="RestartResultButton" type="Button" parent="ResultPanel"]
+layout_mode = 0
+offset_left = 36.0
+offset_top = 58.0
+offset_right = 224.0
+offset_bottom = 92.0
+text = "再来一局"
+
+[node name="ExitResultButton" type="Button" parent="ResultPanel"]
+layout_mode = 0
+offset_left = 36.0
+offset_top = 104.0
+offset_right = 224.0
+offset_bottom = 138.0
+text = "退出"

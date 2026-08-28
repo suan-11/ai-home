@@ -1,11 +1,15 @@
 extends Control
-## 简单的 AI 五子棋对战。
-## 玩家执黑，AI 执白；点击棋盘落子，AI 使用启发式评分选择位置。
+## 标准 15×15 五子棋对战。
+## 玩家执黑，AI 执白；AI 使用启发式评分选择位置。
+## 预留游戏结束信号，方便后续接入奖励/好感度等系统。
 
 signal back_requested
+signal game_finished(result: String)
+signal game_restarted
+signal game_exited
 
-const BOARD_SIZE := 9
-const CELL_SIZE := 32.0
+const BOARD_SIZE := 15
+const CELL_SIZE := 20.0
 const PLAYER := 1
 const AI := 2
 const DIRS: Array[Vector2i] = [
@@ -23,12 +27,19 @@ var _ai_thinking := false
 @onready var status_label: Label = $StatusLabel
 @onready var restart_button: Button = $RestartButton
 @onready var back_button: Button = $BackButton
+@onready var result_panel: Panel = $ResultPanel
+@onready var result_label: Label = $ResultPanel/ResultLabel
+@onready var restart_result_button: Button = $ResultPanel/RestartResultButton
+@onready var exit_result_button: Button = $ResultPanel/ExitResultButton
 
 
 func _ready() -> void:
 	_reset_board()
 	restart_button.pressed.connect(_on_restart_pressed)
 	back_button.pressed.connect(_on_back_pressed)
+	restart_result_button.pressed.connect(_on_restart_result_pressed)
+	exit_result_button.pressed.connect(_on_exit_result_pressed)
+	result_panel.visible = false
 
 
 func _draw() -> void:
@@ -39,27 +50,28 @@ func _draw() -> void:
 	var panel_rect := _panel_rect()
 	draw_rect(panel_rect, Color(0.20, 0.16, 0.20, 0.98))
 
-	# 棋盘
+	# 标准 15 路棋盘
 	var board_origin := _board_origin()
 	var line_color := Color(0.72, 0.60, 0.45)
+	var grid_size := (BOARD_SIZE - 1) * CELL_SIZE
 	for i in range(BOARD_SIZE):
 		var x := board_origin.x + i * CELL_SIZE
 		var y := board_origin.y + i * CELL_SIZE
 		draw_line(
 			Vector2(x, board_origin.y),
-			Vector2(x, board_origin.y + (BOARD_SIZE - 1) * CELL_SIZE),
+			Vector2(x, board_origin.y + grid_size),
 			line_color,
 			1.0
 		)
 		draw_line(
 			Vector2(board_origin.x, y),
-			Vector2(board_origin.x + (BOARD_SIZE - 1) * CELL_SIZE, y),
+			Vector2(board_origin.x + grid_size, y),
 			line_color,
 			1.0
 		)
 
-	# 星位
-	for star in [Vector2i(2, 2), Vector2i(4, 4), Vector2i(6, 6)]:
+	# 标准星位
+	for star in [Vector2i(3, 3), Vector2i(3, 11), Vector2i(11, 3), Vector2i(11, 11), Vector2i(7, 7)]:
 		var center := _cell_center(star)
 		draw_circle(center, 3.0, Color(0.72, 0.60, 0.45))
 
@@ -71,9 +83,9 @@ func _draw() -> void:
 				continue
 			var center := _cell_center(Vector2i(col, row))
 			if value == PLAYER:
-				draw_circle(center, 11.0, Color(0.12, 0.12, 0.14))
+				draw_circle(center, 8.0, Color(0.12, 0.12, 0.14))
 			else:
-				draw_circle(center, 11.0, Color(0.95, 0.94, 0.92))
+				draw_circle(center, 8.0, Color(0.95, 0.94, 0.92))
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -89,7 +101,7 @@ func _gui_input(event: InputEvent) -> void:
 
 			_place_stone(cell, PLAYER)
 			if _check_win(cell, PLAYER):
-				_end_game("你赢了！")
+				_end_game("你赢了！", "win")
 				return
 
 			current_turn = AI
@@ -105,13 +117,13 @@ func _ai_move_async() -> void:
 
 	var best := _find_best_ai_move()
 	if best.x < 0:
-		_end_game("平局")
+		_end_game("平局", "draw")
 		return
 
 	_place_stone(best, AI)
 	_ai_thinking = false
 	if _check_win(best, AI):
-		_end_game("AI 赢了")
+		_end_game("AI 赢了", "lose")
 		return
 
 	current_turn = PLAYER
@@ -139,7 +151,7 @@ func _find_best_ai_move() -> Vector2i:
 
 
 func _distance_to_center(cell: Vector2i) -> int:
-	return absi(cell.x - 4) + absi(cell.y - 4)
+	return absi(cell.x - 7) + absi(cell.y - 7)
 
 
 func _score_cell(cell: Vector2i, player: int) -> int:
@@ -202,16 +214,58 @@ func _place_stone(cell: Vector2i, player: int) -> void:
 	queue_redraw()
 
 
-func _end_game(message: String) -> void:
+func _end_game(message: String, result: String) -> void:
 	game_over = true
 	_ai_thinking = false
 	status_label.text = message
+	result_label.text = message
+	result_panel.visible = true
+	game_finished.emit(result)
+
+	match result:
+		"win":
+			_on_game_won()
+		"lose":
+			_on_game_lost()
+		"draw":
+			_on_draw()
+
+
+func _on_game_won() -> void:
+	## 预留：玩家胜利后的奖励、好感度增加、日记记录等
+	print("[Gomoku] 胜利接口预留")
+
+
+func _on_game_lost() -> void:
+	## 预留：玩家失败后的安慰、好感度变化等
+	print("[Gomoku] 失败接口预留")
+
+
+func _on_draw() -> void:
+	## 预留：平局后的处理
+	print("[Gomoku] 平局接口预留")
 
 
 func _on_restart_pressed() -> void:
 	_reset_board()
+	result_panel.visible = false
 	status_label.text = "你的回合：点击交叉点落子"
 	queue_redraw()
+	game_restarted.emit()
+
+
+func _on_restart_result_pressed() -> void:
+	_on_restart_pressed()
+
+
+func _on_back_pressed() -> void:
+	game_exited.emit()
+	back_requested.emit()
+
+
+func _on_exit_result_pressed() -> void:
+	game_exited.emit()
+	back_requested.emit()
 
 
 func _reset_board() -> void:
@@ -224,10 +278,6 @@ func _reset_board() -> void:
 	current_turn = PLAYER
 	game_over = false
 	_ai_thinking = false
-
-
-func _on_back_pressed() -> void:
-	back_requested.emit()
 
 
 func _pixel_to_cell(pos: Vector2) -> Vector2i:
@@ -245,9 +295,9 @@ func _inside(cell: Vector2i) -> bool:
 
 func _board_origin() -> Vector2:
 	var panel := _panel_rect()
-	return panel.position + Vector2(52, 92)
+	return panel.position + Vector2(24, 60)
 
 
 func _panel_rect() -> Rect2:
-	var panel_size := Vector2(380, 460)
+	var panel_size := Vector2(440, 360)
 	return Rect2(size / 2.0 - panel_size / 2.0, panel_size)

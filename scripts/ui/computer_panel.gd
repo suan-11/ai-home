@@ -7,7 +7,7 @@ extends Control
 signal closed
 signal action_requested(action_name: String)
 
-const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
+const GAME_SELECT_SCENE := preload("res://scenes/ui/game_select.tscn")
 
 var _is_open := false
 var _tween: Tween
@@ -61,7 +61,7 @@ func _finish_close() -> void:
 
 
 func _on_game_pressed() -> void:
-	info_label.text = "正在打开 AI 五子棋…"
+	info_label.text = "正在打开游戏选择…"
 	action_requested.emit("game")
 	_open_game()
 
@@ -69,10 +69,10 @@ func _on_game_pressed() -> void:
 func _open_game() -> void:
 	if _current_game != null:
 		return
-	_current_game = GOMOKU_SCENE.instantiate()
+	_current_game = GAME_SELECT_SCENE.instantiate()
 	add_child(_current_game)
 	_current_game.back_requested.connect(_close_game)
-	info_label.text = "五子棋：你执黑，AI 执白"
+	info_label.text = "请选择一个游戏"
 
 
 func _close_game() -> void:
