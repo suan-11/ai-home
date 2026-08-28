@@ -44,7 +44,7 @@ offset_left = 12.0
 offset_top = 10.0
 offset_right = -12.0
 offset_bottom = 40.0
-text = "电脑桌"
+text = "电脑"
 horizontal_alignment = 1
 
 [node name="CloseButton" type="Button" parent="Panel"]

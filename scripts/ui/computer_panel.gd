@@ -7,8 +7,11 @@ extends Control
 signal closed
 signal action_requested(action_name: String)
 
+const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
+
 var _is_open := false
 var _tween: Tween
+var _current_game: Control = null
 
 @onready var panel: Panel = $Panel
 @onready var info_label: Label = $Panel/InfoLabel
@@ -43,6 +46,7 @@ func close_panel() -> void:
 	if not _is_open:
 		return
 	_is_open = false
+	_close_game()
 
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
@@ -57,8 +61,25 @@ func _finish_close() -> void:
 
 
 func _on_game_pressed() -> void:
-	info_label.text = "游戏：AI 对战小游戏（待接入）"
+	info_label.text = "正在打开 AI 五子棋…"
 	action_requested.emit("game")
+	_open_game()
+
+
+func _open_game() -> void:
+	if _current_game != null:
+		return
+	_current_game = GOMOKU_SCENE.instantiate()
+	add_child(_current_game)
+	_current_game.back_requested.connect(_close_game)
+	info_label.text = "五子棋：你执黑，AI 执白"
+
+
+func _close_game() -> void:
+	if _current_game == null:
+		return
+	_current_game.queue_free()
+	_current_game = null
 
 
 func _on_chat_pressed() -> void:

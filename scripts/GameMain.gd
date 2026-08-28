@@ -109,7 +109,7 @@ func _build_blocked_cells() -> Dictionary:
 	var blocked: Dictionary = {}
 	_furniture_list.clear()
 	_add_furniture(blocked, "床", "sleep", Vector2i(10, 1), Vector2i(2, 2))
-	_add_furniture(blocked, "电脑桌", "computer", Vector2i(3, 4), Vector2i(2, 1))
+	_add_furniture(blocked, "电脑", "computer", Vector2i(3, 4), Vector2i(2, 1))
 	_add_furniture(blocked, "书架", "read", Vector2i(5, 1), Vector2i(2, 1))
 	_add_furniture(blocked, "椅子", "sit", Vector2i(5, 4), Vector2i(1, 1))
 	_add_furniture(blocked, "电视柜", "watch", Vector2i(13, 1), Vector2i(2, 1))

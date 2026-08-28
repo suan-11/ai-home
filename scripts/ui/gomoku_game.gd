@@ -1,0 +1,253 @@
+extends Control
+## 简单的 AI 五子棋对战。
+## 玩家执黑，AI 执白；点击棋盘落子，AI 使用启发式评分选择位置。
+
+signal back_requested
+
+const BOARD_SIZE := 9
+const CELL_SIZE := 32.0
+const PLAYER := 1
+const AI := 2
+const DIRS: Array[Vector2i] = [
+	Vector2i(1, 0),
+	Vector2i(0, 1),
+	Vector2i(1, 1),
+	Vector2i(1, -1),
+]
+
+var board: Array = []
+var current_turn: int = PLAYER
+var game_over := false
+var _ai_thinking := false
+
+@onready var status_label: Label = $StatusLabel
+@onready var restart_button: Button = $RestartButton
+@onready var back_button: Button = $BackButton
+
+
+func _ready() -> void:
+	_reset_board()
+	restart_button.pressed.connect(_on_restart_pressed)
+	back_button.pressed.connect(_on_back_pressed)
+
+
+func _draw() -> void:
+	# 全屏半透明遮罩
+	draw_rect(Rect2(Vector2.ZERO, size), Color(0.06, 0.05, 0.07, 0.85))
+
+	# 居中面板
+	var panel_rect := _panel_rect()
+	draw_rect(panel_rect, Color(0.20, 0.16, 0.20, 0.98))
+
+	# 棋盘
+	var board_origin := _board_origin()
+	var line_color := Color(0.72, 0.60, 0.45)
+	for i in range(BOARD_SIZE):
+		var x := board_origin.x + i * CELL_SIZE
+		var y := board_origin.y + i * CELL_SIZE
+		draw_line(
+			Vector2(x, board_origin.y),
+			Vector2(x, board_origin.y + (BOARD_SIZE - 1) * CELL_SIZE),
+			line_color,
+			1.0
+		)
+		draw_line(
+			Vector2(board_origin.x, y),
+			Vector2(board_origin.x + (BOARD_SIZE - 1) * CELL_SIZE, y),
+			line_color,
+			1.0
+		)
+
+	# 星位
+	for star in [Vector2i(2, 2), Vector2i(4, 4), Vector2i(6, 6)]:
+		var center := _cell_center(star)
+		draw_circle(center, 3.0, Color(0.72, 0.60, 0.45))
+
+	# 棋子
+	for row in range(BOARD_SIZE):
+		for col in range(BOARD_SIZE):
+			var value: int = board[row][col]
+			if value == 0:
+				continue
+			var center := _cell_center(Vector2i(col, row))
+			if value == PLAYER:
+				draw_circle(center, 11.0, Color(0.12, 0.12, 0.14))
+			else:
+				draw_circle(center, 11.0, Color(0.95, 0.94, 0.92))
+
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			if game_over or _ai_thinking or current_turn != PLAYER:
+				return
+			var cell := _pixel_to_cell(event.position)
+			if not _inside(cell):
+				return
+			if board[cell.y][cell.x] != 0:
+				return
+
+			_place_stone(cell, PLAYER)
+			if _check_win(cell, PLAYER):
+				_end_game("你赢了！")
+				return
+
+			current_turn = AI
+			_ai_thinking = true
+			status_label.text = "AI 思考中…"
+			_ai_move_async()
+
+
+func _ai_move_async() -> void:
+	await get_tree().create_timer(0.35).timeout
+	if game_over:
+		return
+
+	var best := _find_best_ai_move()
+	if best.x < 0:
+		_end_game("平局")
+		return
+
+	_place_stone(best, AI)
+	_ai_thinking = false
+	if _check_win(best, AI):
+		_end_game("AI 赢了")
+		return
+
+	current_turn = PLAYER
+	status_label.text = "你的回合：点击交叉点落子"
+	queue_redraw()
+
+
+func _find_best_ai_move() -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var best_score := -1
+	for row in range(BOARD_SIZE):
+		for col in range(BOARD_SIZE):
+			if board[row][col] != 0:
+				continue
+			var cell := Vector2i(col, row)
+			var attack := _score_cell(cell, AI)
+			var defense := _score_cell(cell, PLAYER)
+			var score := attack + int(defense * 0.9)
+			if score > best_score:
+				best_score = score
+				best = cell
+			elif score == best_score and _distance_to_center(cell) < _distance_to_center(best):
+				best = cell
+	return best
+
+
+func _distance_to_center(cell: Vector2i) -> int:
+	return absi(cell.x - 4) + absi(cell.y - 4)
+
+
+func _score_cell(cell: Vector2i, player: int) -> int:
+	var total := 0
+	for dir in DIRS:
+		total += _line_score(cell, dir, player)
+	return total
+
+
+func _line_score(cell: Vector2i, dir: Vector2i, player: int) -> int:
+	var count := 1
+	var open_ends := 0
+
+	var cur := cell + dir
+	while _inside(cur) and board[cur.y][cur.x] == player:
+		count += 1
+		cur += dir
+	if _inside(cur) and board[cur.y][cur.x] == 0:
+		open_ends += 1
+
+	cur = cell - dir
+	while _inside(cur) and board[cur.y][cur.x] == player:
+		count += 1
+		cur -= dir
+	if _inside(cur) and board[cur.y][cur.x] == 0:
+		open_ends += 1
+
+	if count >= 5:
+		return 100000
+	if count == 4:
+		return 10000 * (open_ends + 1)
+	if count == 3:
+		return 1000 * (open_ends + 1)
+	if count == 2:
+		return 100 * (open_ends + 1)
+	return 10
+
+
+func _check_win(cell: Vector2i, player: int) -> bool:
+	for dir in DIRS:
+		var count := 1
+		count += _count_dir(cell, dir, player)
+		count += _count_dir(cell, -dir, player)
+		if count >= 5:
+			return true
+	return false
+
+
+func _count_dir(start: Vector2i, dir: Vector2i, player: int) -> int:
+	var count := 0
+	var cur := start + dir
+	while _inside(cur) and board[cur.y][cur.x] == player:
+		count += 1
+		cur += dir
+	return count
+
+
+func _place_stone(cell: Vector2i, player: int) -> void:
+	board[cell.y][cell.x] = player
+	queue_redraw()
+
+
+func _end_game(message: String) -> void:
+	game_over = true
+	_ai_thinking = false
+	status_label.text = message
+
+
+func _on_restart_pressed() -> void:
+	_reset_board()
+	status_label.text = "你的回合：点击交叉点落子"
+	queue_redraw()
+
+
+func _reset_board() -> void:
+	board.clear()
+	for row in range(BOARD_SIZE):
+		var line: Array = []
+		for col in range(BOARD_SIZE):
+			line.append(0)
+		board.append(line)
+	current_turn = PLAYER
+	game_over = false
+	_ai_thinking = false
+
+
+func _on_back_pressed() -> void:
+	back_requested.emit()
+
+
+func _pixel_to_cell(pos: Vector2) -> Vector2i:
+	var local := (pos - _board_origin()) / CELL_SIZE
+	return Vector2i(int(round(local.x)), int(round(local.y)))
+
+
+func _cell_center(cell: Vector2i) -> Vector2:
+	return _board_origin() + Vector2(cell.x, cell.y) * CELL_SIZE
+
+
+func _inside(cell: Vector2i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.x < BOARD_SIZE and cell.y < BOARD_SIZE
+
+
+func _board_origin() -> Vector2:
+	var panel := _panel_rect()
+	return panel.position + Vector2(52, 92)
+
+
+func _panel_rect() -> Rect2:
+	var panel_size := Vector2(380, 460)
+	return Rect2(size / 2.0 - panel_size / 2.0, panel_size)
