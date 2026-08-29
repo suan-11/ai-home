@@ -36,6 +36,7 @@ var _current_tab := ""
 @onready var model_edit: LineEdit = $ContentArea/AiPanel/ModelEdit
 @onready var max_tokens_edit: LineEdit = $ContentArea/AiPanel/MaxTokensEdit
 @onready var temp_slider: HSlider = $ContentArea/AiPanel/TempSlider
+@onready var temp_value_label: Label = $ContentArea/AiPanel/TempValueLabel
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _ready() -> void:
 	$TabBar/AiTab.pressed.connect(_on_tab_pressed.bind(TAB_AI))
 	$BackButton.pressed.connect(_on_back_pressed)
 	$ContentArea/AiPanel/SaveButton.pressed.connect(_on_save_pressed)
+	temp_slider.value_changed.connect(_on_temp_slider_changed)
 
 	_load_values()
 	_show_tab(TAB_GENERAL)
@@ -67,6 +69,7 @@ func _load_values() -> void:
 	model_edit.text = ConfigManager.get_value("ai", "model", "")
 	max_tokens_edit.text = str(ConfigManager.get_value("ai", "max_tokens", 512))
 	temp_slider.value = float(ConfigManager.get_value("ai", "temperature", 0.8))
+	_update_temp_value()
 
 
 func _show_tab(tab: String) -> void:
@@ -109,6 +112,14 @@ func _panel_for_tab(tab: String) -> Control:
 
 func _on_tab_pressed(tab: String) -> void:
 	_show_tab(tab)
+
+
+func _on_temp_slider_changed(_value: float) -> void:
+	_update_temp_value()
+
+
+func _update_temp_value() -> void:
+	temp_value_label.text = "%.2f" % temp_slider.value
 
 
 func _on_save_pressed() -> void:
