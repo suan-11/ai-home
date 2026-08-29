@@ -35,6 +35,7 @@ var _screen_stack: Array = []
 
 
 func _ready() -> void:
+	visible = false
 	$Panel/CloseButton.pressed.connect(close_panel)
 
 
@@ -60,7 +61,7 @@ func open_panel() -> void:
 
 
 func close_panel() -> void:
-	if not _is_open:
+	if not visible:
 		return
 	_is_open = false
 
