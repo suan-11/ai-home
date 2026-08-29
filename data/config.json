@@ -20,7 +20,7 @@
     "tts_enabled": false
   },
   "gameplay": {
-    "active_char": "char_01",
+    "active_char": "char_03",
     "active_room": "default",
     "state_tick_interval": 5.0
   }

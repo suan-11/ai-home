@@ -8,6 +8,8 @@ signal interaction_triggered(interaction_name: String)
 const SPEED := 80.0  # 像素/秒
 const CELL_SIZE := 16
 const CELL_CENTER_OFFSET := Vector2(8, 8)
+const CHAR_ID := "char_03"
+const CHAR_SPRITE_PATH := "res://assets/chars/%s/sprites" % CHAR_ID
 
 var grid_size: Vector2i = Vector2i(16, 12)
 var grid_origin: Vector2 = Vector2.ZERO
@@ -110,18 +112,18 @@ func _physics_process(delta: float) -> void:
 func _setup_animations() -> void:
 	var frames := SpriteFrames.new()
 
-	var idle_0: Texture2D = load("res://assets/chars/char_01/sprites/idle_0.png")
-	var idle_1: Texture2D = load("res://assets/chars/char_01/sprites/idle_1.png")
+	var idle_0: Texture2D = load(CHAR_SPRITE_PATH + "/idle_0.png")
+	var idle_1: Texture2D = load(CHAR_SPRITE_PATH + "/idle_1.png")
 	frames.add_animation("idle")
 	frames.add_frame("idle", idle_0)
 	frames.add_frame("idle", idle_1)
 	frames.set_animation_speed("idle", 4.0)
 	frames.set_animation_loop("idle", true)
 
-	var walk_0: Texture2D = load("res://assets/chars/char_01/sprites/walk_0.png")
-	var walk_1: Texture2D = load("res://assets/chars/char_01/sprites/walk_1.png")
-	var walk_2: Texture2D = load("res://assets/chars/char_01/sprites/walk_2.png")
-	var walk_3: Texture2D = load("res://assets/chars/char_01/sprites/walk_3.png")
+	var walk_0: Texture2D = load(CHAR_SPRITE_PATH + "/walk_0.png")
+	var walk_1: Texture2D = load(CHAR_SPRITE_PATH + "/walk_1.png")
+	var walk_2: Texture2D = load(CHAR_SPRITE_PATH + "/walk_2.png")
+	var walk_3: Texture2D = load(CHAR_SPRITE_PATH + "/walk_3.png")
 	frames.add_animation("walk")
 	frames.add_frame("walk", walk_0)
 	frames.add_frame("walk", walk_1)
