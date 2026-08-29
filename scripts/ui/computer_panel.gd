@@ -172,7 +172,6 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 			screen.game_requested.connect(open_game_select)
 			screen.chat_requested.connect(open_chat)
 			screen.diary_requested.connect(_on_diary_requested)
-			screen.settings_requested.connect(open_settings)
 		SCREEN_GAMES:
 			screen.gomoku_requested.connect(open_gomoku)
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))

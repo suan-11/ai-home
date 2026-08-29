@@ -7,13 +7,15 @@ extends Node2D
 
 const GRID_SIZE := Vector2i(16, 12)
 const CELL_SIZE := 16
-const GRID_ORIGIN := Vector2(112, 84)
+const GRID_ORIGIN := Vector2(160, 84)
 const WALL_HEIGHT := 48.0
 const HALF_CELL := Vector2(8, 8)
 const COMPUTER_PANEL_SCENE := preload("res://scenes/ui/computer_panel.tscn")
+const SETTINGS_OVERLAY_SCENE := preload("res://scenes/ui/main_settings_overlay.tscn")
 
 var _target_cell: Vector2i = Vector2i(-1, -1)
 var _computer_panel: Control = null
+var _settings_overlay: Control = null
 var _blocked_cells: Dictionary = {}
 var _furniture_list: Array = []
 
@@ -30,6 +32,12 @@ func _ready() -> void:
 	_computer_panel = COMPUTER_PANEL_SCENE.instantiate()
 	$UI.add_child(_computer_panel)
 	_computer_panel.closed.connect(_on_computer_panel_closed)
+
+	_settings_overlay = SETTINGS_OVERLAY_SCENE.instantiate()
+	$UI.add_child(_settings_overlay)
+	_settings_overlay.closed.connect(_on_settings_overlay_closed)
+	$UI/SettingsButton.pressed.connect(_on_main_settings_pressed)
+
 	status_label.text = "温馨小屋：点击地板移动，F11 切换全屏"
 	queue_redraw()
 
@@ -62,6 +70,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_cell = cell
 			character.move_to_cell(cell)
 			status_label.text = "目标：格子 %s" % str(cell)
+
+
+func _on_main_settings_pressed() -> void:
+	if _settings_overlay != null:
+		_settings_overlay.open_overlay()
+
+
+func _on_settings_overlay_closed() -> void:
+	status_label.text = "设置已关闭"
 
 
 func _toggle_fullscreen() -> void:

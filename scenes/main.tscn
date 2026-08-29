@@ -10,7 +10,7 @@ script = ExtResource("1_main")
 [node name="Room" type="Node2D" parent="."]
 
 [node name="Character" type="CharacterBody2D" parent="Room"]
-position = Vector2(120, 92)
+position = Vector2(168, 92)
 script = ExtResource("2_char")
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="Room/Character"]
@@ -20,9 +20,16 @@ script = ExtResource("2_char")
 [node name="StatusLabel" type="Label" parent="UI"]
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 472.0
+offset_right = 350.0
 offset_bottom = 36.0
 text = "Phase 1 加载中…"
+
+[node name="SettingsButton" type="Button" parent="UI"]
+offset_left = 360.0
+offset_top = 8.0
+offset_right = 472.0
+offset_bottom = 36.0
+text = "设置"
 
 [node name="PortraitLayer" type="Control" parent="UI"]
 layout_mode = 1
