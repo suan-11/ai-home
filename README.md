@@ -36,7 +36,7 @@
   - 盆栽 `water`
 - 网格 A* 寻路
 - 家具碰撞和“先走到旁边再交互”的交互系统
-- 仿电脑系统界面（显示器外框/标题栏/任务栏/桌面）：
+- 仿电脑操作系统（显示器外框/标题栏/任务栏/桌面 + 屏幕切换动画 API）：
   - 游戏（游戏选择界面 + AI 五子棋）
   - 聊天（AI 对话 API 接口已预留）
   - 日记（好感度/记忆，占位）
@@ -53,6 +53,7 @@ ai-home/
 │   ├── main.tscn           # 主场景
 │   └── ui/
 │       ├── computer_panel.tscn
+│       ├── desktop_screen.tscn
 │       ├── game_select.tscn
 │       └── gomoku_game.tscn
 ├── scripts/
@@ -60,7 +61,7 @@ ai-home/
 │   ├── autoload/           # 全局单例：Game/Config/Memory/AI
 │   ├── char/               # 角色控制
 │   ├── logic/              # 寻路/状态机/行为
-│   └── ui/                 # UI 脚本（仿电脑界面、游戏选择、五子棋）
+│   └── ui/                 # UI 脚本（OS外壳、桌面、游戏选择、五子棋）
 ├── data/                   # 配置与运行数据
 ├── setting/                # 地图/权重配置
 ├── doc/                    # 设计文档
@@ -69,6 +70,7 @@ ai-home/
 
 ## 后续计划
 
+- 利用 OS 屏幕切换 API 接入更多应用/小游戏
 - 接入 AI 对话 API（`AIConnector.send_chat` 接口已预留）
 - 继续扩展游戏模块（更多 AI 小游戏）
 - 完善日记/好感度系统

@@ -1,5 +1,5 @@
 extends Control
-## 标准 15×15 五子棋对战。
+## 标准 15×15 五子棋屏幕（运行在电脑系统屏幕区域内）。
 ## 玩家执黑，AI 执白；AI 使用启发式评分选择位置。
 ## 预留游戏结束信号，方便后续接入奖励/好感度等系统。
 
@@ -9,7 +9,7 @@ signal game_restarted
 signal game_exited
 
 const BOARD_SIZE := 15
-const CELL_SIZE := 20.0
+const CELL_SIZE := 16.0
 const PLAYER := 1
 const AI := 2
 const DIRS: Array[Vector2i] = [
@@ -43,12 +43,14 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	# 全屏半透明遮罩
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.06, 0.05, 0.07, 0.85))
-
-	# 居中面板
-	var panel_rect := _panel_rect()
-	draw_rect(panel_rect, Color(0.20, 0.16, 0.20, 0.98))
+	# 应用窗口背景
+	var app_rect := _app_rect()
+	draw_rect(app_rect, Color(0.20, 0.16, 0.20, 0.98))
+	# 标题栏条
+	draw_rect(
+		Rect2(app_rect.position, Vector2(app_rect.size.x, 30)),
+		Color(0.16, 0.13, 0.18)
+	)
 
 	# 标准 15 路棋盘
 	var board_origin := _board_origin()
@@ -83,9 +85,9 @@ func _draw() -> void:
 				continue
 			var center := _cell_center(Vector2i(col, row))
 			if value == PLAYER:
-				draw_circle(center, 8.0, Color(0.12, 0.12, 0.14))
+				draw_circle(center, 7.0, Color(0.12, 0.12, 0.14))
 			else:
-				draw_circle(center, 8.0, Color(0.95, 0.94, 0.92))
+				draw_circle(center, 7.0, Color(0.95, 0.94, 0.92))
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -232,17 +234,14 @@ func _end_game(message: String, result: String) -> void:
 
 
 func _on_game_won() -> void:
-	## 预留：玩家胜利后的奖励、好感度增加、日记记录等
 	print("[Gomoku] 胜利接口预留")
 
 
 func _on_game_lost() -> void:
-	## 预留：玩家失败后的安慰、好感度变化等
 	print("[Gomoku] 失败接口预留")
 
 
 func _on_draw() -> void:
-	## 预留：平局后的处理
 	print("[Gomoku] 平局接口预留")
 
 
@@ -294,10 +293,8 @@ func _inside(cell: Vector2i) -> bool:
 
 
 func _board_origin() -> Vector2:
-	var panel := _panel_rect()
-	return panel.position + Vector2(24, 60)
+	return Vector2(14, 34)
 
 
-func _panel_rect() -> Rect2:
-	var panel_size := Vector2(440, 360)
-	return Rect2(size / 2.0 - panel_size / 2.0, panel_size)
+func _app_rect() -> Rect2:
+	return Rect2(Vector2(6, 6), size - Vector2(12, 12))

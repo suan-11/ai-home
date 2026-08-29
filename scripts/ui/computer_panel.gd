@@ -1,28 +1,41 @@
 extends Control
-## 电脑桌交互面板：
-## - 覆盖在屏幕中央的半透明宫格界面
-## - 四宫格：游戏 / 聊天 / 日记 / 空位
-## - 打开/关闭带淡入淡出和缩放动画
+## 电脑操作系统外壳。
+## 负责：
+## - 打开/关闭整台电脑（动画）
+## - 在屏幕区域内切换各个“应用界面”
+## - 提供 OS 风格的屏幕切换 API（带预设动画）供后续软件调用
 
 signal closed
-signal action_requested(action_name: String)
 
+enum Transition {
+	FADE,
+	SLIDE_LEFT,
+	SLIDE_RIGHT,
+	SLIDE_UP,
+	SLIDE_DOWN,
+	SCALE,
+}
+
+const SCREEN_DESKTOP := "desktop"
+const SCREEN_GAMES := "games"
+const SCREEN_GOMOKU := "gomoku"
+
+const DESKTOP_SCENE := preload("res://scenes/ui/desktop_screen.tscn")
 const GAME_SELECT_SCENE := preload("res://scenes/ui/game_select.tscn")
+const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
 
 var _is_open := false
 var _tween: Tween
-var _current_game: Control = null
+var _current_screen: Control = null
+var _current_screen_id := ""
+var _screen_stack: Array = []
 
 @onready var panel: Control = $Panel
-@onready var info_label: Label = $Panel/InfoLabel
+@onready var screen_area: Control = $Panel/ScreenArea
 
 
 func _ready() -> void:
-	visible = false
 	$Panel/CloseButton.pressed.connect(close_panel)
-	$Panel/Grid/GameButton.pressed.connect(_on_game_pressed)
-	$Panel/Grid/ChatButton.pressed.connect(_on_chat_pressed)
-	$Panel/Grid/DiaryButton.pressed.connect(_on_diary_pressed)
 
 
 func open_panel() -> void:
@@ -33,20 +46,23 @@ func open_panel() -> void:
 
 	modulate.a = 0.0
 	panel.pivot_offset = panel.size / 2.0
-	panel.scale = Vector2(0.85, 0.85)
+	panel.scale = Vector2(0.9, 0.9)
 
 	_tween = create_tween().set_parallel()
 	_tween.set_trans(Tween.TRANS_BACK)
 	_tween.set_ease(Tween.EASE_OUT)
-	_tween.tween_property(self, "modulate:a", 1.0, 0.25)
-	_tween.tween_property(panel, "scale", Vector2.ONE, 0.32)
+	_tween.tween_property(self, "modulate:a", 1.0, 0.22)
+	_tween.tween_property(panel, "scale", Vector2.ONE, 0.3)
+
+	if _current_screen == null:
+		await get_tree().create_timer(0.05).timeout
+		show_desktop(Transition.FADE)
 
 
 func close_panel() -> void:
 	if not _is_open:
 		return
 	_is_open = false
-	_close_game()
 
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
@@ -60,33 +76,157 @@ func _finish_close() -> void:
 	closed.emit()
 
 
-func _on_game_pressed() -> void:
-	info_label.text = "正在打开游戏选择…"
-	action_requested.emit("game")
-	_open_game()
+## ---------------- OS 屏幕切换 API ----------------
+
+func show_desktop(transition: int = Transition.FADE) -> void:
+	_open_screen(SCREEN_DESKTOP, DESKTOP_SCENE, transition, false)
 
 
-func _open_game() -> void:
-	if _current_game != null:
+func open_game_select(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_GAMES, GAME_SELECT_SCENE, transition, true)
+
+
+func open_gomoku(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_GOMOKU, GOMOKU_SCENE, transition, true)
+
+
+func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
+	if _screen_stack.is_empty():
 		return
-	_current_game = GAME_SELECT_SCENE.instantiate()
-	add_child(_current_game)
-	_current_game.back_requested.connect(_close_game)
-	info_label.text = "请选择一个游戏"
+	var target := String(_screen_stack.pop_back())
+	match target:
+		SCREEN_DESKTOP:
+			_open_screen(SCREEN_DESKTOP, DESKTOP_SCENE, transition, false)
+		SCREEN_GAMES:
+			_open_screen(SCREEN_GAMES, GAME_SELECT_SCENE, transition, false)
+		SCREEN_GOMOKU:
+			_open_screen(SCREEN_GOMOKU, GOMOKU_SCENE, transition, false)
 
 
-func _close_game() -> void:
-	if _current_game == null:
+func get_current_screen_id() -> String:
+	return _current_screen_id
+
+
+func _open_screen(screen_id: String, scene: PackedScene, transition: int, push: bool) -> void:
+	var new_screen: Control = scene.instantiate()
+	if push:
+		_screen_stack.append(_current_screen_id)
+	_change_screen(screen_id, new_screen, transition)
+
+
+func _prepare_screen(screen: Control) -> void:
+	screen.anchor_left = 0.0
+	screen.anchor_top = 0.0
+	screen.anchor_right = 0.0
+	screen.anchor_bottom = 0.0
+	screen.offset_left = 0.0
+	screen.offset_top = 0.0
+	screen.offset_right = 0.0
+	screen.offset_bottom = 0.0
+	screen.position = Vector2.ZERO
+	screen.size = screen_area.size
+
+
+func _change_screen(screen_id: String, new_screen: Control, transition: int) -> void:
+	if _current_screen != null and _current_screen_id == screen_id:
+		new_screen.queue_free()
 		return
-	_current_game.queue_free()
-	_current_game = null
+
+	_setup_screen_signals(screen_id, new_screen)
+
+	_prepare_screen(new_screen)
+	screen_area.add_child(new_screen)
+
+	var old_screen := _current_screen
+	_current_screen = new_screen
+	_current_screen_id = screen_id
+
+	if old_screen != null:
+		old_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_animate_screen_out(old_screen, transition)
+		get_tree().create_timer(0.28).timeout.connect(_free_screen.bind(old_screen))
+
+	_animate_screen_in(new_screen, transition)
 
 
-func _on_chat_pressed() -> void:
-	info_label.text = "聊天：AI 对话 API 接口已预留"
-	action_requested.emit("chat")
+func _setup_screen_signals(screen_id: String, screen: Control) -> void:
+	match screen_id:
+		SCREEN_DESKTOP:
+			screen.game_requested.connect(open_game_select)
+			screen.chat_requested.connect(_on_chat_requested)
+			screen.diary_requested.connect(_on_diary_requested)
+		SCREEN_GAMES:
+			screen.gomoku_requested.connect(open_gomoku)
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
+		SCREEN_GOMOKU:
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 
 
-func _on_diary_pressed() -> void:
-	info_label.text = "日记：角色好感度 / 记忆（待完善）"
-	action_requested.emit("diary")
+func _on_chat_requested() -> void:
+	pass
+
+
+func _on_diary_requested() -> void:
+	pass
+
+
+## ---------------- 预设动画 ----------------
+
+func _animate_screen_in(screen: Control, transition: int) -> void:
+	match transition:
+		Transition.FADE:
+			screen.modulate.a = 0.0
+			create_tween().tween_property(screen, "modulate:a", 1.0, 0.22)
+		Transition.SLIDE_LEFT:
+			screen.position = Vector2(screen_area.size.x, 0)
+			_slide_tween(screen, Vector2.ZERO, true)
+		Transition.SLIDE_RIGHT:
+			screen.position = Vector2(-screen_area.size.x, 0)
+			_slide_tween(screen, Vector2.ZERO, true)
+		Transition.SLIDE_UP:
+			screen.position = Vector2(0, screen_area.size.y)
+			_slide_tween(screen, Vector2.ZERO, true)
+		Transition.SLIDE_DOWN:
+			screen.position = Vector2(0, -screen_area.size.y)
+			_slide_tween(screen, Vector2.ZERO, true)
+		Transition.SCALE:
+			screen.pivot_offset = screen.size / 2.0
+			screen.scale = Vector2(0.85, 0.85)
+			screen.modulate.a = 0.0
+			var tween := create_tween().set_parallel()
+			var scale_tween := tween.tween_property(screen, "scale", Vector2.ONE, 0.28)
+			scale_tween.set_trans(Tween.TRANS_BACK)
+			scale_tween.set_ease(Tween.EASE_OUT)
+			tween.tween_property(screen, "modulate:a", 1.0, 0.2)
+
+
+func _animate_screen_out(screen: Control, transition: int) -> void:
+	match transition:
+		Transition.FADE:
+			create_tween().tween_property(screen, "modulate:a", 0.0, 0.2)
+		Transition.SLIDE_LEFT:
+			_slide_tween(screen, Vector2(-screen_area.size.x, 0), false)
+		Transition.SLIDE_RIGHT:
+			_slide_tween(screen, Vector2(screen_area.size.x, 0), false)
+		Transition.SLIDE_UP:
+			_slide_tween(screen, Vector2(0, -screen_area.size.y), false)
+		Transition.SLIDE_DOWN:
+			_slide_tween(screen, Vector2(0, screen_area.size.y), false)
+		Transition.SCALE:
+			create_tween().tween_property(screen, "modulate:a", 0.0, 0.18)
+
+
+func _slide_tween(screen: Control, target_position: Vector2, fade_in: bool) -> void:
+	var tween := create_tween().set_parallel()
+	var pos_tween := tween.tween_property(screen, "position", target_position, 0.26)
+	pos_tween.set_trans(Tween.TRANS_CUBIC)
+	pos_tween.set_ease(Tween.EASE_OUT)
+	if fade_in:
+		tween.tween_property(screen, "modulate:a", 1.0, 0.16)
+	else:
+		tween.tween_property(screen, "modulate:a", 0.0, 0.2)
+
+
+func _free_screen(screen: Control) -> void:
+	if is_instance_valid(screen):
+		screen.queue_free()
