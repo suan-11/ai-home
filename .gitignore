@@ -11,3 +11,6 @@ Thumbs.db
 # 本地工具缓存（勿提交）
 %LOCALAPPDATA%/
 Godot/
+
+# 预览图（不提交）
+previews/
