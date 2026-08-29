@@ -1,8 +1,12 @@
 {
-  "char_01": {
+  "char_03": {
     "short_term": [],
-    "long_term_summary": "",
+    "pending_summary": [],
+    "daily_chats": {},
+    "daily_events": {},
     "key_facts": [],
-    "last_summary_update": null
+    "long_term_summary": "",
+    "last_summary_update": "",
+    "diaries": {}
   }
 }

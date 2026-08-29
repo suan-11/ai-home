@@ -94,8 +94,16 @@ func _toggle_fullscreen() -> void:
 
 
 func _on_character_interaction(interaction_name: String) -> void:
+	var char_id := GameManager.CURRENT_CHAR_ID
+	MemoryManager.record_daily_event(char_id, "interaction", interaction_name)
 	if interaction_name == "computer":
 		_open_computer_panel()
+		return
+	var added := GameManager.register_interaction(char_id, interaction_name)
+	if added:
+		status_label.text = "触发交互：%s（好感 +1）" % interaction_name
+	else:
+		status_label.text = "触发交互：%s" % interaction_name
 
 
 func _open_computer_panel() -> void:

@@ -234,15 +234,28 @@ func _end_game(message: String, result: String) -> void:
 
 
 func _on_game_won() -> void:
-	print("[Gomoku] 胜利接口预留")
+	var char_id := GameManager.CURRENT_CHAR_ID
+	var delta := GameManager.on_game_finished(char_id, "win")
+	MemoryManager.record_daily_event(char_id, "gomoku", "win")
+	if delta > 0:
+		result_label.text += "\n好感度 +%d" % delta
+	print("[Gomoku] 胜利，好感度 +%d" % delta)
 
 
 func _on_game_lost() -> void:
+	var char_id := GameManager.CURRENT_CHAR_ID
+	GameManager.on_game_finished(char_id, "lose")
+	MemoryManager.record_daily_event(char_id, "gomoku", "lose")
 	print("[Gomoku] 失败接口预留")
 
 
 func _on_draw() -> void:
-	print("[Gomoku] 平局接口预留")
+	var char_id := GameManager.CURRENT_CHAR_ID
+	var delta := GameManager.on_game_finished(char_id, "draw")
+	MemoryManager.record_daily_event(char_id, "gomoku", "draw")
+	if delta > 0:
+		result_label.text += "\n好感度 +%d" % delta
+	print("[Gomoku] 平局，好感度 +%d" % delta)
 
 
 func _on_restart_pressed() -> void:

@@ -1,14 +1,22 @@
 extends Node
-## AI HTTP 客户端：调用 OpenAI 兼容 /chat/completions 接口。
-## 配置来源：ConfigManager（设置界面 AI 标签页）。
+## AI HTTP 客户端：OpenAI 兼容 /chat/completions。
+## 三种请求模式：CHAT（默认，信号回传）/ JSON / TEXT（可传 on_success/on_error 回调）。
+## 不传回调时：JSON 用 json_reply，TEXT 用 text_reply，错误统一 error_occurred。
 
 signal chat_reply(text: String)
+signal text_reply(text: String)
+signal json_reply(data: Dictionary)
 signal error_occurred(message: String)
 
 const CONNECT_TIMEOUT := 20.0
 
+enum Mode { CHAT, JSON, TEXT }
+
 var _http: HTTPRequest
 var _pending := false
+var _mode: int = Mode.CHAT
+var _on_success: Callable = Callable()
+var _on_error: Callable = Callable()
 
 
 func _ready() -> void:
@@ -23,8 +31,20 @@ func can_send() -> bool:
 
 
 func send_chat(messages: Array) -> void:
+	_request(Mode.CHAT, messages, null, null)
+
+
+func request_json(messages: Array, on_success = null, on_error = null) -> void:
+	_request(Mode.JSON, messages, on_success, on_error)
+
+
+func request_text(messages: Array, on_success = null, on_error = null) -> void:
+	_request(Mode.TEXT, messages, on_success, on_error)
+
+
+func _request(mode: int, messages: Array, on_success, on_error) -> void:
 	if _pending:
-		error_occurred.emit("上一次请求还没完成，请稍等喵")
+		_fail("上一次请求还没完成，请稍等", on_error)
 		return
 
 	var api_base: String = ConfigManager.get_value("ai", "api_base", "")
@@ -32,10 +52,10 @@ func send_chat(messages: Array) -> void:
 	var model: String = ConfigManager.get_value("ai", "model", "")
 
 	if api_base.is_empty() or api_key.is_empty():
-		error_occurred.emit("请先在设置 → AI 设置里填写 Base URL 和 API Key")
+		_fail("请先在设置 → AI 设置里填写 Base URL 和 API Key", on_error)
 		return
 	if model.is_empty():
-		error_occurred.emit("请先在设置里填写模型名")
+		_fail("请先在设置里填写模型名", on_error)
 		return
 
 	var url := api_base.trim_suffix("/") + "/chat/completions"
@@ -51,11 +71,21 @@ func send_chat(messages: Array) -> void:
 		"Authorization: Bearer " + api_key,
 	]
 
+	_mode = mode
+	_on_success = on_success if on_success is Callable else Callable()
+	_on_error = on_error if on_error is Callable else Callable()
 	_pending = true
 	var err := _http.request(url, headers, HTTPClient.METHOD_POST, body)
 	if err != OK:
 		_pending = false
-		error_occurred.emit("请求创建失败：%s" % error_string(err))
+		_fail("请求创建失败：%s" % error_string(err), _on_error)
+
+
+func _fail(message: String, on_error) -> void:
+	if on_error is Callable and on_error.is_valid():
+		on_error.call(message)
+	else:
+		error_occurred.emit(message)
 
 
 func _on_request_completed(
@@ -67,20 +97,20 @@ func _on_request_completed(
 	_pending = false
 
 	if result != HTTPRequest.RESULT_SUCCESS:
-		error_occurred.emit("网络请求失败，请检查 Base URL 和网络（%s）" % error_string(result))
+		_fail("网络请求失败，请检查 Base URL 和网络（%s）" % error_string(result), _on_error)
 		return
 
 	var text := body.get_string_from_utf8()
 	var parsed = JSON.parse_string(text)
 	if parsed == null:
-		error_occurred.emit("返回数据不是有效 JSON")
+		_fail("返回数据不是有效 JSON", _on_error)
 		return
 
 	if response_code < 200 or response_code >= 300:
 		var error_text := "请求失败：HTTP %d" % response_code
 		if parsed is Dictionary and parsed.has("error"):
 			error_text += " - " + str(parsed["error"])
-		error_occurred.emit(error_text)
+		_fail(error_text, _on_error)
 		return
 
 	if parsed is Dictionary && parsed.has("choices") && parsed["choices"] is Array:
@@ -88,8 +118,41 @@ func _on_request_completed(
 		if first is Dictionary and first.has("message"):
 			var message = first["message"]
 			if message is Dictionary and message.has("content"):
-				var reply: String = str(message["content"])
-				chat_reply.emit(reply)
+				_dispatch(str(message["content"]))
 				return
 
-	error_occurred.emit("响应格式不正确")
+	_fail("响应格式不正确", _on_error)
+
+
+func _dispatch(content: String) -> void:
+	match _mode:
+		Mode.JSON:
+			_handle_json(content)
+		Mode.TEXT:
+			if _on_success.is_valid():
+				_on_success.call(content)
+			else:
+				text_reply.emit(content)
+		_:
+			chat_reply.emit(content)
+
+
+func _handle_json(content: String) -> void:
+	var data = JSON.parse_string(content)
+	if not (data is Dictionary):
+		data = _extract_json(content)
+	if data is Dictionary:
+		if _on_success.is_valid():
+			_on_success.call(data)
+		else:
+			json_reply.emit(data)
+	else:
+		_fail("AI 返回的不是有效 JSON", _on_error)
+
+
+func _extract_json(content: String):
+	var start := content.find("{")
+	var end := content.rfind("}")
+	if start < 0 or end <= start:
+		return null
+	return JSON.parse_string(content.substr(start, end - start + 1))

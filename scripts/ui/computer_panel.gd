@@ -21,12 +21,14 @@ const SCREEN_GAMES := "games"
 const SCREEN_GOMOKU := "gomoku"
 const SCREEN_SETTINGS := "settings"
 const SCREEN_CHAT := "chat"
+const SCREEN_DIARY := "diary"
 
 const DESKTOP_SCENE := preload("res://scenes/ui/desktop_screen.tscn")
 const GAME_SELECT_SCENE := preload("res://scenes/ui/game_select.tscn")
 const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
 const SETTINGS_SCENE := preload("res://scenes/ui/settings_screen.tscn")
 const CHAT_SCENE := preload("res://scenes/ui/chat_screen.tscn")
+const DIARY_SCENE := preload("res://scenes/ui/diary_screen.tscn")
 
 var _is_open := false
 var _tween: Tween
@@ -103,6 +105,10 @@ func open_chat(transition: int = Transition.SLIDE_LEFT) -> void:
 	_open_screen(SCREEN_CHAT, CHAT_SCENE, transition, true)
 
 
+func open_diary(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_DIARY, DIARY_SCENE, transition, true)
+
+
 func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
 	if _screen_stack.is_empty():
 		return
@@ -118,6 +124,8 @@ func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
 			_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, false)
 		SCREEN_CHAT:
 			_open_screen(SCREEN_CHAT, CHAT_SCENE, transition, false)
+		SCREEN_DIARY:
+			_open_screen(SCREEN_DIARY, DIARY_SCENE, transition, false)
 
 
 func get_current_screen_id() -> String:
@@ -171,7 +179,7 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 		SCREEN_DESKTOP:
 			screen.game_requested.connect(open_game_select)
 			screen.chat_requested.connect(open_chat)
-			screen.diary_requested.connect(_on_diary_requested)
+			screen.diary_requested.connect(open_diary)
 		SCREEN_GAMES:
 			screen.gomoku_requested.connect(open_gomoku)
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
@@ -181,13 +189,11 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_CHAT:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
+		SCREEN_DIARY:
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 
 
 func _on_chat_requested() -> void:
-	pass
-
-
-func _on_diary_requested() -> void:
 	pass
 
 
