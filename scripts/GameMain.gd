@@ -13,25 +13,28 @@ const HALF_CELL := Vector2(8, 8)
 const COMPUTER_PANEL_SCENE := preload("res://scenes/ui/computer_panel.tscn")
 const SETTINGS_OVERLAY_SCENE := preload("res://scenes/ui/main_settings_overlay.tscn")
 const LAYOUT_OVERLAY_SCENE := preload("res://scenes/ui/room_layout_overlay.tscn")
+const HELP_OVERLAY_SCENE := preload("res://scenes/ui/help_overlay.tscn")
 const LAYOUT_PATH := "user://room_layout.json"
 
-## 家具规格表（id / 显示名 / 交互名 / 尺寸 / 默认位置 / 布置网格用颜色）
+## 家具规格表（id / 显示名 / 交互名 / 功能说明 / 尺寸 / 默认位置 / 布置网格用颜色）
 const FURNITURE_SPECS := [
-	{"id": "bed", "name": "床", "interaction": "sleep", "size": Vector2i(2, 2), "pos": Vector2i(10, 1), "color": Color(0.62, 0.42, 0.28)},
-	{"id": "desk", "name": "电脑", "interaction": "computer", "size": Vector2i(2, 1), "pos": Vector2i(3, 4), "color": Color(0.55, 0.38, 0.25)},
-	{"id": "shelf", "name": "书架", "interaction": "read", "size": Vector2i(2, 1), "pos": Vector2i(5, 1), "color": Color(0.45, 0.30, 0.20)},
-	{"id": "chair", "name": "椅子", "interaction": "sit", "size": Vector2i(1, 1), "pos": Vector2i(5, 4), "color": Color(0.55, 0.38, 0.25)},
-	{"id": "tv", "name": "电视柜", "interaction": "watch", "size": Vector2i(2, 1), "pos": Vector2i(13, 1), "color": Color(0.62, 0.43, 0.27)},
-	{"id": "sofa", "name": "沙发", "interaction": "rest", "size": Vector2i(2, 1), "pos": Vector2i(13, 5), "color": Color(0.78, 0.48, 0.45)},
-	{"id": "lamp", "name": "落地灯", "interaction": "light", "size": Vector2i(1, 1), "pos": Vector2i(12, 8), "color": Color(1.0, 0.87, 0.58)},
-	{"id": "plant", "name": "盆栽", "interaction": "water", "size": Vector2i(1, 1), "pos": Vector2i(14, 10), "color": Color(0.45, 0.65, 0.40)},
-	{"id": "layout", "name": "布置台", "interaction": "decorate", "size": Vector2i(1, 1), "pos": Vector2i(2, 10), "color": Color(0.85, 0.70, 0.45)},
+	{"id": "bed", "name": "床", "interaction": "sleep", "desc": "睡觉休息。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(2, 2), "pos": Vector2i(10, 1), "color": Color(0.62, 0.42, 0.28)},
+	{"id": "desk", "name": "电脑", "interaction": "computer", "desc": "打开仿电脑操作系统：游戏选择、AI 五子棋、聊天、日记都在里面。", "size": Vector2i(2, 1), "pos": Vector2i(3, 4), "color": Color(0.55, 0.38, 0.25)},
+	{"id": "shelf", "name": "书架", "interaction": "read", "desc": "阅读。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(2, 1), "pos": Vector2i(5, 1), "color": Color(0.45, 0.30, 0.20)},
+	{"id": "chair", "name": "椅子", "interaction": "sit", "desc": "坐下。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(1, 1), "pos": Vector2i(5, 4), "color": Color(0.55, 0.38, 0.25)},
+	{"id": "tv", "name": "电视柜", "interaction": "watch", "desc": "看电视。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(2, 1), "pos": Vector2i(13, 1), "color": Color(0.62, 0.43, 0.27)},
+	{"id": "sofa", "name": "沙发", "interaction": "rest", "desc": "休息。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(2, 1), "pos": Vector2i(13, 5), "color": Color(0.78, 0.48, 0.45)},
+	{"id": "lamp", "name": "落地灯", "interaction": "light", "desc": "开灯/阅读。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(1, 1), "pos": Vector2i(12, 8), "color": Color(1.0, 0.87, 0.58)},
+	{"id": "plant", "name": "盆栽", "interaction": "water", "desc": "浇水。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(1, 1), "pos": Vector2i(14, 10), "color": Color(0.45, 0.65, 0.40)},
+	{"id": "layout", "name": "布置台", "interaction": "decorate", "desc": "打开房间布置界面：长按家具拾起→移动→点击放下，可保存到 user://room_layout.json 或恢复默认。该交互不加好感度。", "size": Vector2i(1, 1), "pos": Vector2i(2, 10), "color": Color(0.85, 0.70, 0.45)},
 ]
 
 var _target_cell: Vector2i = Vector2i(-1, -1)
 var _computer_panel: Control = null
 var _settings_overlay: Control = null
 var _layout_overlay: Control = null
+var _help_overlay: Control = null
+var _pending_guide := false
 var _blocked_cells: Dictionary = {}
 var _furniture_list: Array = []
 var _layout_objects: Array = []
@@ -55,9 +58,14 @@ func _ready() -> void:
 	$UI.add_child(_settings_overlay)
 	_settings_overlay.closed.connect(_on_settings_overlay_closed)
 	$UI/SettingsButton.pressed.connect(_on_main_settings_pressed)
+	$UI/FurnitureButton.pressed.connect(_on_furniture_help_pressed)
 
 	status_label.text = "温馨小屋：点击地板移动，F11 切换全屏"
 	queue_redraw()
+
+	# 首次进入：自动弹出新手攻略
+	if not ConfigManager.get_value("general", "guide_seen", false):
+		_open_help_overlay("guide")
 
 	# 启动后自动演示一次：走向书桌旁边的空地
 	await get_tree().create_timer(0.6).timeout
@@ -97,6 +105,31 @@ func _on_main_settings_pressed() -> void:
 
 func _on_settings_overlay_closed() -> void:
 	status_label.text = "设置已关闭"
+
+
+func _on_furniture_help_pressed() -> void:
+	_open_help_overlay("furniture")
+
+
+func _open_help_overlay(mode: String) -> void:
+	if _help_overlay == null:
+		_help_overlay = HELP_OVERLAY_SCENE.instantiate()
+		$UI.add_child(_help_overlay)
+		_help_overlay.closed.connect(_on_help_overlay_closed)
+	if mode == "guide":
+		_pending_guide = true
+		_help_overlay.setup_guide()
+	else:
+		_pending_guide = false
+		_help_overlay.setup_furniture(FURNITURE_SPECS)
+	_help_overlay.open_overlay()
+
+
+func _on_help_overlay_closed() -> void:
+	if _pending_guide:
+		_pending_guide = false
+		ConfigManager.set_value("general", "guide_seen", true)
+	status_label.text = "攻略已关闭"
 
 
 func _toggle_fullscreen() -> void:

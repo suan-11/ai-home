@@ -31,6 +31,13 @@ offset_right = 472.0
 offset_bottom = 36.0
 text = "设置"
 
+[node name="FurnitureButton" type="Button" parent="UI"]
+offset_left = 360.0
+offset_top = 40.0
+offset_right = 472.0
+offset_bottom = 68.0
+text = "家具介绍"
+
 [node name="PortraitLayer" type="Control" parent="UI"]
 layout_mode = 1
 anchor_left = 0.0
