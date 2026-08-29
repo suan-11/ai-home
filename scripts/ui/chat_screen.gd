@@ -7,9 +7,8 @@ var _messages: Array = []
 var _waiting := false
 
 @onready var message_label: RichTextLabel = $ScrollContainer/MessageLabel
-@onready var input_edit: LineEdit = $InputEdit
-@onready var send_button: Button = $SendButton
-@onready var status_label: Label = $StatusLabel
+@onready var input_edit: LineEdit = $BottomBar/InputEdit
+@onready var send_button: Button = $BottomBar/SendButton
 
 
 func _ready() -> void:
@@ -19,7 +18,6 @@ func _ready() -> void:
 	$BackButton.pressed.connect(_on_back_pressed)
 	send_button.pressed.connect(_on_send_pressed)
 	input_edit.text_submitted.connect(func(_text: String) -> void: _on_send_pressed())
-	status_label.text = "与梅尔聊天"
 
 
 func _draw() -> void:
@@ -52,7 +50,6 @@ func _on_send_pressed() -> void:
 	_waiting = true
 	send_button.disabled = true
 	input_edit.editable = false
-	status_label.text = "梅尔思考中…"
 	AIConnector.send_chat(_messages)
 
 
@@ -62,7 +59,6 @@ func _on_chat_reply(text: String) -> void:
 	input_edit.editable = true
 	_messages.append({"role": "assistant", "content": text})
 	_append_message("梅尔", text)
-	status_label.text = "与梅尔聊天"
 
 
 func _on_chat_error(message: String) -> void:
@@ -70,7 +66,6 @@ func _on_chat_error(message: String) -> void:
 	send_button.disabled = false
 	input_edit.editable = true
 	_append_message("系统", message)
-	status_label.text = "出错了喵"
 
 
 func _append_message(who: String, text: String) -> void:
