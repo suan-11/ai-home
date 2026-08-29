@@ -12,18 +12,36 @@ const WALL_HEIGHT := 48.0
 const HALF_CELL := Vector2(8, 8)
 const COMPUTER_PANEL_SCENE := preload("res://scenes/ui/computer_panel.tscn")
 const SETTINGS_OVERLAY_SCENE := preload("res://scenes/ui/main_settings_overlay.tscn")
+const LAYOUT_OVERLAY_SCENE := preload("res://scenes/ui/room_layout_overlay.tscn")
+const LAYOUT_PATH := "user://room_layout.json"
+
+## 家具规格表（id / 显示名 / 交互名 / 尺寸 / 默认位置 / 布置网格用颜色）
+const FURNITURE_SPECS := [
+	{"id": "bed", "name": "床", "interaction": "sleep", "size": Vector2i(2, 2), "pos": Vector2i(10, 1), "color": Color(0.62, 0.42, 0.28)},
+	{"id": "desk", "name": "电脑", "interaction": "computer", "size": Vector2i(2, 1), "pos": Vector2i(3, 4), "color": Color(0.55, 0.38, 0.25)},
+	{"id": "shelf", "name": "书架", "interaction": "read", "size": Vector2i(2, 1), "pos": Vector2i(5, 1), "color": Color(0.45, 0.30, 0.20)},
+	{"id": "chair", "name": "椅子", "interaction": "sit", "size": Vector2i(1, 1), "pos": Vector2i(5, 4), "color": Color(0.55, 0.38, 0.25)},
+	{"id": "tv", "name": "电视柜", "interaction": "watch", "size": Vector2i(2, 1), "pos": Vector2i(13, 1), "color": Color(0.62, 0.43, 0.27)},
+	{"id": "sofa", "name": "沙发", "interaction": "rest", "size": Vector2i(2, 1), "pos": Vector2i(13, 5), "color": Color(0.78, 0.48, 0.45)},
+	{"id": "lamp", "name": "落地灯", "interaction": "light", "size": Vector2i(1, 1), "pos": Vector2i(12, 8), "color": Color(1.0, 0.87, 0.58)},
+	{"id": "plant", "name": "盆栽", "interaction": "water", "size": Vector2i(1, 1), "pos": Vector2i(14, 10), "color": Color(0.45, 0.65, 0.40)},
+	{"id": "layout", "name": "布置台", "interaction": "decorate", "size": Vector2i(1, 1), "pos": Vector2i(2, 10), "color": Color(0.85, 0.70, 0.45)},
+]
 
 var _target_cell: Vector2i = Vector2i(-1, -1)
 var _computer_panel: Control = null
 var _settings_overlay: Control = null
+var _layout_overlay: Control = null
 var _blocked_cells: Dictionary = {}
 var _furniture_list: Array = []
+var _layout_objects: Array = []
 
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
 
 
 func _ready() -> void:
+	_load_layout()
 	_blocked_cells = _build_blocked_cells()
 	character.set_blocked_cells(_blocked_cells)
 	character.set_grid(GRID_ORIGIN, GRID_SIZE)
@@ -99,6 +117,10 @@ func _on_character_interaction(interaction_name: String) -> void:
 	if interaction_name == "computer":
 		_open_computer_panel()
 		return
+	if interaction_name == "decorate":
+		# 布置台：弹出自定义界面；不加好感度（与其它家具交互不同）
+		_open_layout_overlay()
+		return
 	var added := GameManager.register_interaction(char_id, interaction_name)
 	if added:
 		status_label.text = "触发交互：%s（好感 +1）" % interaction_name
@@ -133,14 +155,14 @@ func _handle_furniture_click(furniture: Dictionary) -> void:
 func _build_blocked_cells() -> Dictionary:
 	var blocked: Dictionary = {}
 	_furniture_list.clear()
-	_add_furniture(blocked, "床", "sleep", Vector2i(10, 1), Vector2i(2, 2))
-	_add_furniture(blocked, "电脑", "computer", Vector2i(3, 4), Vector2i(2, 1))
-	_add_furniture(blocked, "书架", "read", Vector2i(5, 1), Vector2i(2, 1))
-	_add_furniture(blocked, "椅子", "sit", Vector2i(5, 4), Vector2i(1, 1))
-	_add_furniture(blocked, "电视柜", "watch", Vector2i(13, 1), Vector2i(2, 1))
-	_add_furniture(blocked, "沙发", "rest", Vector2i(13, 5), Vector2i(2, 1))
-	_add_furniture(blocked, "落地灯", "light", Vector2i(12, 8), Vector2i(1, 1))
-	_add_furniture(blocked, "盆栽", "water", Vector2i(14, 10), Vector2i(1, 1))
+	for spec in FURNITURE_SPECS:
+		_add_furniture(
+			blocked,
+			spec["name"],
+			spec["interaction"],
+			_furniture_pos(spec["id"]),
+			spec["size"]
+		)
 	return blocked
 
 
@@ -162,6 +184,119 @@ func _add_furniture(
 		"interaction": interaction,
 		"cells": cells,
 	})
+
+
+## ---------------- 房间布局（user://room_layout.json） ----------------
+
+func _load_layout() -> void:
+	_layout_objects = []
+	if FileAccess.file_exists(LAYOUT_PATH):
+		var file = FileAccess.open(LAYOUT_PATH, FileAccess.READ)
+		if file != null:
+			var text := file.get_as_text()
+			file.close()
+			var parsed = JSON.parse_string(text)
+			if parsed is Dictionary and parsed.has("objects") and parsed["objects"] is Array:
+				for obj in parsed["objects"]:
+					if not (obj is Dictionary):
+						continue
+					var type_id := str(obj.get("type", ""))
+					var pos_data = obj.get("pos", [])
+					if type_id.is_empty() or not (pos_data is Array) or pos_data.size() != 2:
+						continue
+					if _layout_has_type(type_id):
+						continue
+					_layout_objects.append({
+						"type": type_id,
+						"pos": Vector2i(int(pos_data[0]), int(pos_data[1])),
+					})
+	if _layout_objects.is_empty():
+		_layout_objects = _default_layout_objects()
+
+
+func _default_layout_objects() -> Array:
+	var result: Array = []
+	for spec in FURNITURE_SPECS:
+		result.append({"type": spec["id"], "pos": spec["pos"]})
+	return result
+
+
+func _save_layout_objects(objects: Array) -> void:
+	var json_objects: Array = []
+	for obj in objects:
+		json_objects.append({
+			"type": str(obj["type"]),
+			"pos": [int(obj["pos"].x), int(obj["pos"].y)],
+		})
+	var file = FileAccess.open(LAYOUT_PATH, FileAccess.WRITE)
+	if file != null:
+		file.store_string(JSON.stringify({"objects": json_objects}, "\t"))
+		file.close()
+
+
+func _layout_has_type(type_id: String) -> bool:
+	for obj in _layout_objects:
+		if str(obj["type"]) == type_id:
+			return true
+	return false
+
+
+func _furniture_pos(type_id: String) -> Vector2i:
+	for obj in _layout_objects:
+		if str(obj["type"]) == type_id:
+			return obj["pos"]
+	var spec := _spec_by_id(type_id)
+	if not spec.is_empty():
+		return spec["pos"]
+	return Vector2i.ZERO
+
+
+func _spec_by_id(type_id: String) -> Dictionary:
+	for spec in FURNITURE_SPECS:
+		if str(spec["id"]) == type_id:
+			return spec
+	return {}
+
+
+func _layout_overlay_data() -> Array:
+	var result: Array = []
+	for obj in _layout_objects:
+		var spec := _spec_by_id(str(obj["type"]))
+		if spec.is_empty():
+			continue
+		result.append({
+			"type": spec["id"],
+			"name": spec["name"],
+			"pos": obj["pos"],
+			"size": spec["size"],
+			"color": spec["color"],
+		})
+	return result
+
+
+func _open_layout_overlay() -> void:
+	if _layout_overlay == null:
+		_layout_overlay = LAYOUT_OVERLAY_SCENE.instantiate()
+		$UI.add_child(_layout_overlay)
+		_layout_overlay.layout_saved.connect(_on_layout_saved)
+		_layout_overlay.closed.connect(_on_layout_overlay_closed)
+	_layout_overlay.setup(_layout_overlay_data())
+	_layout_overlay.open_overlay()
+
+
+func _on_layout_saved(objects: Array) -> void:
+	_layout_objects = []
+	for obj in objects:
+		_layout_objects.append({"type": str(obj["type"]), "pos": obj["pos"]})
+	_save_layout_objects(_layout_objects)
+	_blocked_cells = _build_blocked_cells()
+	character.set_blocked_cells(_blocked_cells)
+	status_label.text = "房间布置已保存"
+	queue_redraw()
+
+
+func _on_layout_overlay_closed() -> void:
+	status_label.text = "房间布置已关闭"
 
 
 func _get_furniture_at(cell: Vector2i) -> Dictionary:
@@ -329,10 +464,11 @@ func _draw_furniture() -> void:
 	_draw_rug()
 	_draw_lamp()
 	_draw_plant()
+	_draw_layout_desk()
 
 
 func _draw_bed() -> void:
-	var bed := _cell_rect(Vector2i(10, 1), Vector2i(2, 2))
+	var bed := _cell_rect(_furniture_pos("bed"), Vector2i(2, 2))
 	draw_rect(bed, Color(0.62, 0.42, 0.28))
 	# 床头
 	draw_rect(Rect2(bed.position, Vector2(bed.size.x, 3)), Color(0.48, 0.31, 0.20))
@@ -349,7 +485,7 @@ func _draw_bed() -> void:
 
 
 func _draw_desk() -> void:
-	var desk := _cell_rect(Vector2i(3, 4), Vector2i(2, 1))
+	var desk := _cell_rect(_furniture_pos("desk"), Vector2i(2, 1))
 
 	# 外框
 	draw_rect(
@@ -401,7 +537,7 @@ func _draw_desk() -> void:
 
 
 func _draw_bookshelf() -> void:
-	var shelf := _cell_rect(Vector2i(5, 1), Vector2i(2, 1))
+	var shelf := _cell_rect(_furniture_pos("shelf"), Vector2i(2, 1))
 	# 外框
 	draw_rect(shelf, Color(0.45, 0.30, 0.20))
 	# 内侧
@@ -429,7 +565,7 @@ func _draw_bookshelf() -> void:
 
 
 func _draw_chair() -> void:
-	var chair := _cell_rect(Vector2i(5, 4), Vector2i(1, 1))
+	var chair := _cell_rect(_furniture_pos("chair"), Vector2i(1, 1))
 	# 椅背
 	draw_rect(
 		Rect2(chair.position + Vector2(4, 1), Vector2(8, 4)),
@@ -452,7 +588,7 @@ func _draw_chair() -> void:
 
 
 func _draw_tv() -> void:
-	var tv := _cell_rect(Vector2i(13, 1), Vector2i(2, 1))
+	var tv := _cell_rect(_furniture_pos("tv"), Vector2i(2, 1))
 	# 电视外框
 	draw_rect(
 		Rect2(tv.position + Vector2(8, 0), Vector2(16, 9)),
@@ -485,7 +621,7 @@ func _draw_tv() -> void:
 
 
 func _draw_sofa() -> void:
-	var sofa := _cell_rect(Vector2i(13, 5), Vector2i(2, 1))
+	var sofa := _cell_rect(_furniture_pos("sofa"), Vector2i(2, 1))
 	# 沙发靠背
 	draw_rect(
 		Rect2(sofa.position + Vector2(2, 2), Vector2(28, 5)),
@@ -517,7 +653,7 @@ func _draw_sofa() -> void:
 
 
 func _draw_plant() -> void:
-	var plant := _cell_rect(Vector2i(14, 10), Vector2i(1, 1))
+	var plant := _cell_rect(_furniture_pos("plant"), Vector2i(1, 1))
 	# 叶子
 	draw_rect(
 		Rect2(plant.position + Vector2(6, 2), Vector2(4, 6)),
@@ -539,6 +675,42 @@ func _draw_plant() -> void:
 	draw_rect(
 		Rect2(plant.position + Vector2(4, 10), Vector2(8, 2)),
 		Color(0.60, 0.35, 0.26)
+	)
+
+
+func _draw_layout_desk() -> void:
+	var desk := _cell_rect(_furniture_pos("layout"), Vector2i(1, 1))
+	# 台面
+	draw_rect(
+		Rect2(desk.position + Vector2(1, 6), Vector2(14, 8)),
+		Color(0.66, 0.46, 0.28)
+	)
+	# 图纸
+	draw_rect(
+		Rect2(desk.position + Vector2(3, 3), Vector2(10, 8)),
+		Color(0.75, 0.85, 0.95)
+	)
+	# 图纸网格
+	draw_line(
+		desk.position + Vector2(3, 7),
+		desk.position + Vector2(13, 7),
+		Color(0.55, 0.65, 0.80),
+		1.0
+	)
+	draw_line(
+		desk.position + Vector2(8, 3),
+		desk.position + Vector2(8, 11),
+		Color(0.55, 0.65, 0.80),
+		1.0
+	)
+	# 铅笔
+	draw_rect(
+		Rect2(desk.position + Vector2(1, 2), Vector2(2, 9)),
+		Color(0.90, 0.75, 0.35)
+	)
+	draw_rect(
+		Rect2(desk.position + Vector2(1, 2), Vector2(2, 2)),
+		Color(0.95, 0.80, 0.90)
 	)
 
 
@@ -579,7 +751,7 @@ func _draw_rug() -> void:
 
 
 func _draw_lamp() -> void:
-	var lamp := _cell_rect(Vector2i(12, 8), Vector2i(1, 1))
+	var lamp := _cell_rect(_furniture_pos("lamp"), Vector2i(1, 1))
 	# 灯罩
 	draw_rect(
 		Rect2(lamp.position + Vector2(5, 2), Vector2(6, 4)),
