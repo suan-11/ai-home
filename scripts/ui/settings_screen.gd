@@ -1,0 +1,132 @@
+extends Control
+## 设置应用：顶部标签页 + 下方子界面。
+## 可保存到 ConfigManager（user://config.json）。
+
+signal back_requested
+
+const TAB_GENERAL := "general"
+const TAB_DISPLAY := "display"
+const TAB_AUDIO := "audio"
+const TAB_AI := "ai"
+
+var _current_tab := ""
+
+@onready var tab_bar: HBoxContainer = $TabBar
+@onready var content_area: Control = $ContentArea
+@onready var status_label: Label = $StatusLabel
+
+@onready var general_panel: Control = $ContentArea/GeneralPanel
+@onready var display_panel: Control = $ContentArea/DisplayPanel
+@onready var audio_panel: Control = $ContentArea/AudioPanel
+@onready var ai_panel: Control = $ContentArea/AiPanel
+
+@onready var owner_edit: LineEdit = $ContentArea/GeneralPanel/OwnerEdit
+@onready var auto_save_check: CheckButton = $ContentArea/GeneralPanel/AutoSaveCheck
+
+@onready var pixel_scale_check: CheckButton = $ContentArea/DisplayPanel/PixelScaleCheck
+@onready var fps_check: CheckButton = $ContentArea/DisplayPanel/FpsCheck
+@onready var fullscreen_check: CheckButton = $ContentArea/DisplayPanel/FullscreenCheck
+
+@onready var bgm_slider: HSlider = $ContentArea/AudioPanel/BgmSlider
+@onready var sfx_slider: HSlider = $ContentArea/AudioPanel/SfxSlider
+@onready var muted_check: CheckButton = $ContentArea/AudioPanel/MutedCheck
+
+@onready var api_base_edit: LineEdit = $ContentArea/AiPanel/ApiBaseEdit
+@onready var api_key_edit: LineEdit = $ContentArea/AiPanel/ApiKeyEdit
+@onready var model_edit: LineEdit = $ContentArea/AiPanel/ModelEdit
+@onready var max_tokens_edit: LineEdit = $ContentArea/AiPanel/MaxTokensEdit
+@onready var temp_slider: HSlider = $ContentArea/AiPanel/TempSlider
+
+
+func _ready() -> void:
+	$TabBar/GeneralTab.pressed.connect(_on_tab_pressed.bind(TAB_GENERAL))
+	$TabBar/DisplayTab.pressed.connect(_on_tab_pressed.bind(TAB_DISPLAY))
+	$TabBar/AudioTab.pressed.connect(_on_tab_pressed.bind(TAB_AUDIO))
+	$TabBar/AiTab.pressed.connect(_on_tab_pressed.bind(TAB_AI))
+	$BackButton.pressed.connect(_on_back_pressed)
+	$ContentArea/AiPanel/SaveButton.pressed.connect(_on_save_pressed)
+
+	_load_values()
+	_show_tab(TAB_GENERAL)
+
+
+func _load_values() -> void:
+	owner_edit.text = ConfigManager.get_value("general", "owner_name", "主人")
+	auto_save_check.button_pressed = ConfigManager.get_value("general", "auto_save", true)
+
+	pixel_scale_check.button_pressed = ConfigManager.get_value("display", "pixel_scale", 2) >= 2
+	fps_check.button_pressed = ConfigManager.get_value("display", "show_fps", false)
+	fullscreen_check.button_pressed = ConfigManager.get_value("display", "start_fullscreen", false)
+
+	bgm_slider.value = float(ConfigManager.get_value("audio", "bgm_volume", 0.6))
+	sfx_slider.value = float(ConfigManager.get_value("audio", "sfx_volume", 0.8))
+	muted_check.button_pressed = ConfigManager.get_value("audio", "muted", false)
+
+	api_base_edit.text = ConfigManager.get_value("ai", "api_base", "")
+	api_key_edit.text = ConfigManager.get_value("ai", "api_key", "")
+	model_edit.text = ConfigManager.get_value("ai", "model", "")
+	max_tokens_edit.text = str(ConfigManager.get_value("ai", "max_tokens", 512))
+	temp_slider.value = float(ConfigManager.get_value("ai", "temperature", 0.8))
+
+
+func _show_tab(tab: String) -> void:
+	general_panel.visible = tab == TAB_GENERAL
+	display_panel.visible = tab == TAB_DISPLAY
+	audio_panel.visible = tab == TAB_AUDIO
+	ai_panel.visible = tab == TAB_AI
+
+	for btn in [$TabBar/GeneralTab, $TabBar/DisplayTab, $TabBar/AudioTab, $TabBar/AiTab]:
+		var selected: bool = (
+			(btn == $TabBar/GeneralTab and tab == TAB_GENERAL)
+			or (btn == $TabBar/DisplayTab and tab == TAB_DISPLAY)
+			or (btn == $TabBar/AudioTab and tab == TAB_AUDIO)
+			or (btn == $TabBar/AiTab and tab == TAB_AI)
+		)
+		btn.modulate = Color(1, 1, 1) if selected else Color(0.6, 0.6, 0.6)
+
+	var panel := _panel_for_tab(tab)
+	panel.modulate.a = 0.0
+	panel.position = Vector2(0, 8)
+	var tween := create_tween().set_parallel()
+	tween.tween_property(panel, "modulate:a", 1.0, 0.18)
+	var pos_tween := tween.tween_property(panel, "position", Vector2.ZERO, 0.22)
+	pos_tween.set_trans(Tween.TRANS_CUBIC)
+	pos_tween.set_ease(Tween.EASE_OUT)
+	_current_tab = tab
+	status_label.text = "设置：%s" % tab
+
+
+func _panel_for_tab(tab: String) -> Control:
+	match tab:
+		TAB_DISPLAY:
+			return display_panel
+		TAB_AUDIO:
+			return audio_panel
+		TAB_AI:
+			return ai_panel
+	return general_panel
+
+
+func _on_tab_pressed(tab: String) -> void:
+	_show_tab(tab)
+
+
+func _on_save_pressed() -> void:
+	ConfigManager.set_value("general", "owner_name", owner_edit.text)
+	ConfigManager.set_value("general", "auto_save", auto_save_check.button_pressed)
+	ConfigManager.set_value("display", "pixel_scale", 2 if pixel_scale_check.button_pressed else 1)
+	ConfigManager.set_value("display", "show_fps", fps_check.button_pressed)
+	ConfigManager.set_value("display", "start_fullscreen", fullscreen_check.button_pressed)
+	ConfigManager.set_value("audio", "bgm_volume", bgm_slider.value)
+	ConfigManager.set_value("audio", "sfx_volume", sfx_slider.value)
+	ConfigManager.set_value("audio", "muted", muted_check.button_pressed)
+	ConfigManager.set_value("ai", "api_base", api_base_edit.text)
+	ConfigManager.set_value("ai", "api_key", api_key_edit.text)
+	ConfigManager.set_value("ai", "model", model_edit.text)
+	ConfigManager.set_value("ai", "max_tokens", int(max_tokens_edit.text))
+	ConfigManager.set_value("ai", "temperature", temp_slider.value)
+	status_label.text = "设置已保存"
+
+
+func _on_back_pressed() -> void:
+	back_requested.emit()

@@ -46,6 +46,18 @@ text = "日记"
 layout_mode = 2
 custom_minimum_size = Vector2(180, 95)
 
+[node name="SettingsButton" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -90.0
+offset_top = 10.0
+offset_right = -16.0
+offset_bottom = 36.0
+grow_horizontal = 0
+text = "设置"
+
 [node name="InfoLabel" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 12

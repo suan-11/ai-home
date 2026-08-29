@@ -19,10 +19,14 @@ enum Transition {
 const SCREEN_DESKTOP := "desktop"
 const SCREEN_GAMES := "games"
 const SCREEN_GOMOKU := "gomoku"
+const SCREEN_SETTINGS := "settings"
+const SCREEN_CHAT := "chat"
 
 const DESKTOP_SCENE := preload("res://scenes/ui/desktop_screen.tscn")
 const GAME_SELECT_SCENE := preload("res://scenes/ui/game_select.tscn")
 const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
+const SETTINGS_SCENE := preload("res://scenes/ui/settings_screen.tscn")
+const CHAT_SCENE := preload("res://scenes/ui/chat_screen.tscn")
 
 var _is_open := false
 var _tween: Tween
@@ -91,6 +95,14 @@ func open_gomoku(transition: int = Transition.SLIDE_LEFT) -> void:
 	_open_screen(SCREEN_GOMOKU, GOMOKU_SCENE, transition, true)
 
 
+func open_settings(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, true)
+
+
+func open_chat(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_CHAT, CHAT_SCENE, transition, true)
+
+
 func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
 	if _screen_stack.is_empty():
 		return
@@ -102,6 +114,10 @@ func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
 			_open_screen(SCREEN_GAMES, GAME_SELECT_SCENE, transition, false)
 		SCREEN_GOMOKU:
 			_open_screen(SCREEN_GOMOKU, GOMOKU_SCENE, transition, false)
+		SCREEN_SETTINGS:
+			_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, false)
+		SCREEN_CHAT:
+			_open_screen(SCREEN_CHAT, CHAT_SCENE, transition, false)
 
 
 func get_current_screen_id() -> String:
@@ -154,12 +170,17 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 	match screen_id:
 		SCREEN_DESKTOP:
 			screen.game_requested.connect(open_game_select)
-			screen.chat_requested.connect(_on_chat_requested)
+			screen.chat_requested.connect(open_chat)
 			screen.diary_requested.connect(_on_diary_requested)
+			screen.settings_requested.connect(open_settings)
 		SCREEN_GAMES:
 			screen.gomoku_requested.connect(open_gomoku)
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_GOMOKU:
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
+		SCREEN_SETTINGS:
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
+		SCREEN_CHAT:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 
 
