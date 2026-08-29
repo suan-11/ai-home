@@ -7,3 +7,7 @@
 Thumbs.db
 .vscode/
 *.tmp
+
+# 本地工具缓存（勿提交）
+%LOCALAPPDATA%/
+Godot/
