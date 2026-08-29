@@ -1,6 +1,19 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/computer_panel.gd" id="1_panel"]
+[ext_resource type="Script" path="res://scripts/ui/computer_screen.gd" id="2_screen"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_empty"]
+bg_color = Color(0.22, 0.27, 0.38, 0.55)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.55, 0.65, 0.85, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [node name="ComputerPanel" type="Control"]
 layout_mode = 3
@@ -22,40 +35,43 @@ grow_vertical = 2
 mouse_filter = 0
 color = Color(0, 0, 0, 0.45)
 
-[node name="Panel" type="Panel" parent="."]
+[node name="Panel" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -190.0
-offset_top = -160.0
-offset_right = 190.0
-offset_bottom = 160.0
+offset_left = -230.0
+offset_top = -180.0
+offset_right = 230.0
+offset_bottom = 180.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("2_screen")
 
 [node name="Title" type="Label" parent="Panel"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 12.0
-offset_top = 10.0
-offset_right = -12.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -64.0
 offset_bottom = 40.0
 text = "电脑"
-horizontal_alignment = 1
+horizontal_alignment = 0
+vertical_alignment = 1
 
 [node name="CloseButton" type="Button" parent="Panel"]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0
 anchor_right = 1.0
-offset_left = -48.0
-offset_top = 8.0
-offset_right = -10.0
-offset_bottom = 36.0
+offset_left = -58.0
+offset_top = 16.0
+offset_right = -18.0
+offset_bottom = 40.0
 text = "关闭"
 
 [node name="Grid" type="GridContainer" parent="Panel"]
@@ -63,34 +79,35 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = 52.0
-offset_right = -24.0
-offset_bottom = -56.0
+offset_left = 30.0
+offset_top = 60.0
+offset_right = -30.0
+offset_bottom = -72.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 12
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
 columns = 2
 
 [node name="GameButton" type="Button" parent="Panel/Grid"]
 layout_mode = 2
-custom_minimum_size = Vector2(150, 100)
+custom_minimum_size = Vector2(170, 110)
 text = "游戏"
 
 [node name="ChatButton" type="Button" parent="Panel/Grid"]
 layout_mode = 2
-custom_minimum_size = Vector2(150, 100)
+custom_minimum_size = Vector2(170, 110)
 text = "聊天"
 
 [node name="DiaryButton" type="Button" parent="Panel/Grid"]
 layout_mode = 2
-custom_minimum_size = Vector2(150, 100)
+custom_minimum_size = Vector2(170, 110)
 text = "日记"
 
 [node name="EmptySlot" type="Panel" parent="Panel/Grid"]
 layout_mode = 2
-custom_minimum_size = Vector2(150, 100)
+custom_minimum_size = Vector2(170, 110)
+theme_override_styles/panel = SubResource("StyleBox_empty")
 
 [node name="InfoLabel" type="Label" parent="Panel"]
 layout_mode = 1
@@ -98,9 +115,37 @@ anchors_preset = 12
 anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 16.0
-offset_top = -44.0
-offset_right = -16.0
-offset_bottom = -12.0
+offset_left = 20.0
+offset_top = -68.0
+offset_right = -20.0
+offset_bottom = -50.0
 text = "点击一个功能"
 horizontal_alignment = 1
+
+[node name="StartLabel" type="Label" parent="Panel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = -42.0
+offset_right = 80.0
+offset_bottom = -20.0
+text = "开始"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OsLabel" type="Label" parent="Panel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -190.0
+offset_top = -42.0
+offset_right = -22.0
+offset_bottom = -20.0
+text = "AIHome OS v0.1"
+horizontal_alignment = 2
+vertical_alignment = 1

@@ -13,7 +13,7 @@ var _is_open := false
 var _tween: Tween
 var _current_game: Control = null
 
-@onready var panel: Panel = $Panel
+@onready var panel: Control = $Panel
 @onready var info_label: Label = $Panel/InfoLabel
 
 
