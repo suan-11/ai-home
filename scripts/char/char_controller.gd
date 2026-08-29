@@ -27,6 +27,7 @@ var _sprite: AnimatedSprite2D
 func _ready() -> void:
 	_sprite = $AnimatedSprite2D
 	_setup_animations()
+	_sprite.scale = Vector2(0.5, 0.5)
 	current_cell = _pixel_to_cell(position)
 	_sprite.play("idle")
 
