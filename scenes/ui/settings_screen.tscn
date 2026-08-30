@@ -124,6 +124,21 @@ offset_top = 124.0
 offset_right = 260.0
 offset_bottom = 150.0
 
+[node name="SpeedLabel" type="Label" parent="ContentArea/GeneralPanel"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 156.0
+offset_right = 300.0
+offset_bottom = 178.0
+text = "状态变化速度（测试用，正式版移除）"
+
+[node name="SpeedOption" type="OptionButton" parent="ContentArea/GeneralPanel"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 180.0
+offset_right = 260.0
+offset_bottom = 206.0
+
 [node name="DisplayPanel" type="Control" parent="ContentArea"]
 layout_mode = 1
 anchors_preset = 15

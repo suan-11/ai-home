@@ -173,6 +173,11 @@ func build_chat_context(char_id: String, system_prompt: String) -> Array:
 	for entry in mem["short_term"]:
 		if entry is Dictionary:
 			messages.append({"role": entry["role"], "content": entry["content"]})
+	var affection := int(GameManager.get_affection(char_id))
+	messages.append({
+		"role": "system",
+		"content": "当前梅尔对你的好感度：%d/100。只需要在语气和细节上轻微体现（更亲近或略显生分），不要刻意谈论数字。" % affection,
+	})
 	return messages
 
 

@@ -5,6 +5,7 @@ extends Control
 ## - 通过信号通知 GameMain：提示音、气泡、动作动画、家具指令
 
 signal closed
+signal player_activity
 signal notification_triggered
 signal reaction(text: String, emotion: String)
 signal action_requested(action_name: String)
@@ -76,6 +77,7 @@ func _on_send_pressed() -> void:
 		return
 	input_edit.text = ""
 	_append_message("主人", text)
+	player_activity.emit()
 	_messages.append({"role": "user", "content": text})
 	MemoryManager.record_chat(_char_id, "user", text)
 	_waiting = true
@@ -104,8 +106,9 @@ func _request_ai() -> void:
 			+ "且必须符合 JSON 语法：键和字符串用双引号，布尔值用 true/false（不加引号），最后不要逗号。格式："
 			+ "{\"reply\":\"回复给主人的内容\",\"emotion\":\"happy或normal或surprised或sad\","
 			+ "\"action\":\"wave或hop或sad或none或sleep或read或sit或watch或rest或light或water或computer\","
-			+ "\"affection\":true或false,\"reason\":\"10字以内好评感理由\"}。"
-			+ "示例：{\"reply\":\"好呀，来玩！\",\"emotion\":\"happy\",\"action\":\"wave\",\"affection\":true,\"reason\":\"愿意陪主人玩\"}。"
+			+ "\"affection\":true或false,\"reason\":\"10字以内好评感理由\","
+			+ "\"mood_delta\":-2到+3的整数（心情变化；缺省按+1）}。"
+			+ "示例：{\"reply\":\"好呀，来玩！\",\"emotion\":\"happy\",\"action\":\"wave\",\"affection\":true,\"reason\":\"愿意陪主人玩\",\"mood_delta\":2}。"
 			+ "action 表示此刻想做的动作或想去的家具（sleep=床/read=书架/sit=椅子/watch=电视柜/rest=沙发/light=落地灯/water=盆栽/computer=电脑桌）。",
 	})
 	AIConnector.request_json(request_messages, _on_ai_reply, _on_ai_error)
@@ -123,6 +126,7 @@ func _on_ai_reply(data: Dictionary) -> void:
 	_append_message("梅尔", reply)
 	reaction.emit(reply, emotion)
 	action_requested.emit(action)
+	StatusManager.apply_delta(0, _parse_mood_delta(data), 0)
 
 	var eligible := _parse_affection(data.get("affection", false))
 	var reason := str(data.get("reason", "手机消息"))
@@ -143,6 +147,17 @@ func _parse_affection(value) -> bool:
 	return false
 
 
+func _parse_mood_delta(data: Dictionary) -> int:
+	## mood_delta 缺省按 +1；范围钳制到 -2~+3。
+	var value = data.get("mood_delta", 1)
+	var delta := 1
+	if value is int or value is float:
+		delta = int(value)
+	elif value is String:
+		delta = int((value as String).strip_edges()) if (value as String).is_valid_int() else 1
+	return clampi(delta, -2, 3)
+
+
 func _on_ai_error(message: String) -> void:
 	if not _waiting:
 		return
@@ -154,8 +169,6 @@ func _on_ai_error(message: String) -> void:
 func _finish_ui() -> void:
 	send_button.disabled = false
 	input_edit.editable = true
-
-
 ## ---------------- 右上角系统提示（一行一行队列） ----------------
 
 func _enqueue_hint(text: String) -> void:

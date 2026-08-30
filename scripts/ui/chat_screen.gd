@@ -81,9 +81,9 @@ func _start_affection_judgement() -> void:
 		judge_messages.append(msg)
 	judge_messages.append({
 		"role": "user",
-		"content": "【好感度判定】基于刚才这轮对话，判断梅尔是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会。"
+		"content": "【好感度判定】基于刚才这轮对话，判断梅尔是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会；同时给出这轮对话对梅尔心情的影响 mood_delta（-2 到 +3 的整数）。"
 			+ "请只输出一个 JSON 对象（不要输出任何其他文字，不要用 Markdown 代码块），且必须符合 JSON 语法：键和字符串用双引号，布尔值用 true/false（不加引号），例如："
-			+ "{\"affection\":true,\"reason\":\"被夸奖了\"}。affection 只能是 true 或 false，reason 是 10 字以内理由。",
+			+ "{\"affection\":true,\"reason\":\"被夸奖了\",\"mood_delta\":2}。affection 只能是 true 或 false，reason 是 10 字以内理由。",
 	})
 	AIConnector.request_json(
 		judge_messages,
@@ -102,6 +102,7 @@ func _on_affection_judged(data: Dictionary) -> void:
 		reason = "对话内容"
 	if reason.length() > 20:
 		reason = reason.substr(0, 20)
+	StatusManager.apply_delta(0, _parse_mood_delta(data), 0)
 	if eligible and GameManager.add_chat_affection(_char_id, true, reason):
 		var gain := GameManager.get_today_chat_gain(_char_id)
 		_append_message(
@@ -120,6 +121,17 @@ func _parse_affection(value) -> bool:
 		var s := (value as String).strip_edges().to_lower()
 		return s in ["true", "yes", "是", "y", "1", "对", "加分"]
 	return false
+
+
+func _parse_mood_delta(data: Dictionary) -> int:
+	## mood_delta 缺省按 +1；范围钳制到 -2~+3。
+	var value = data.get("mood_delta", 1)
+	var delta := 1
+	if value is int or value is float:
+		delta = int(value)
+	elif value is String:
+		delta = int((value as String).strip_edges()) if (value as String).is_valid_int() else 1
+	return clampi(delta, -2, 3)
 
 
 func _on_affection_error(_message: String) -> void:

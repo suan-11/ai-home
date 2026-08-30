@@ -43,6 +43,9 @@ const FURNITURE_SPECS := [
 	{"id": "lamp", "name": "落地灯", "interaction": "light", "desc": "开灯/阅读。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(1, 1), "pos": Vector2i(12, 8), "color": Color(1.0, 0.87, 0.58)},
 	{"id": "plant", "name": "盆栽", "interaction": "water", "desc": "浇水。当前为预留交互：触发后记录到日记并 +1 好感（每种家具每天首次）。", "size": Vector2i(1, 1), "pos": Vector2i(14, 10), "color": Color(0.45, 0.65, 0.40)},
 	{"id": "layout", "name": "布置台", "interaction": "decorate", "desc": "打开房间布置界面：长按家具拾起→移动→点击放下，可保存到 user://room_layout.json 或恢复默认。该交互不加好感度。", "size": Vector2i(1, 1), "pos": Vector2i(2, 10), "color": Color(0.85, 0.70, 0.45)},
+	{"id": "fridge", "name": "冰箱", "interaction": "fridge", "desc": "从冰箱拿取食物（可先直接吃，或去厨具加热）。该交互不加好感度。", "size": Vector2i(1, 1), "pos": Vector2i(0, 10), "color": Color(0.75, 0.85, 0.92)},
+	{"id": "kitchen", "name": "厨具", "interaction": "cook", "desc": "把冰箱拿到的食物做成熟饭（熟饭吃得更多、心情更好）。该交互不加好感度。", "size": Vector2i(2, 1), "pos": Vector2i(7, 10), "color": Color(0.62, 0.50, 0.42)},
+	{"id": "dining", "name": "饭桌", "interaction": "eat", "desc": "有食物时坐下来吃：生食吃得少，熟食吃得饱、心情更好；也可在沙发上吃。该交互不加好感度。", "size": Vector2i(2, 1), "pos": Vector2i(8, 8), "color": Color(0.72, 0.55, 0.38)},
 ]
 
 var _target_cell: Vector2i = Vector2i(-1, -1)
@@ -63,9 +66,17 @@ var _notify_player: AudioStreamPlayer = null
 var _attract_seq := 0
 var _attract_item: Dictionary = {}   # {"spec": Dictionary, "cell": Vector2i}
 var _attract_item_bob := 0.0
+var _idle_since := 0.0               # 距上次玩家输入（秒）
+var _autonomy_active := false
+var _autonomy_task: Dictionary = {}  # {"type": String, ...}
+var _autonomy_wait := 0.0            # 两次自主动作之间的等待
+var _autonomy_elapsed := 0.0
+var _autonomy_playing_computer := false
+var _last_autonomy_type := ""
 
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
+@onready var play_together_button: Button = $UI/PlayTogetherButton
 
 
 func _ready() -> void:
@@ -92,6 +103,8 @@ func _ready() -> void:
 	_phone_overlay.reaction.connect(_on_phone_reaction)
 	_phone_overlay.action_requested.connect(_on_phone_action)
 	_phone_overlay.notification_triggered.connect(_on_phone_notification)
+	_phone_overlay.player_activity.connect(_mark_player_activity)
+	play_together_button.pressed.connect(_on_play_together_pressed)
 
 	_bubble = BUBBLE_SCENE.instantiate()
 	$UI.add_child(_bubble)
@@ -105,6 +118,8 @@ func _ready() -> void:
 	_notify_player = AudioStreamPlayer.new()
 	_notify_player.stream = load(NOTIFY_SOUND_PATH)
 	add_child(_notify_player)
+
+	_setup_offline_settlement()
 
 	status_label.text = "温馨小屋：点击地板移动，F11 切换全屏"
 	queue_redraw()
@@ -121,10 +136,19 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_attract_item_bob += delta * 2.4
+	_status_tick(delta)
 	queue_redraw()
 
 
+func _status_tick(delta: float) -> void:
+	StatusManager.tick_online(delta)
+	_idle_since += delta
+	_autonomy_tick(delta)
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey or event is InputEventMouseButton:
+		_mark_player_activity()
 	if event is InputEventKey:
 		if event.pressed and not event.echo:
 			if event.keycode == KEY_F11:
@@ -144,6 +168,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _on_main_settings_pressed() -> void:
+	_mark_player_activity()
 	if _settings_overlay != null:
 		_settings_overlay.open_overlay()
 
@@ -153,6 +178,7 @@ func _on_settings_overlay_closed() -> void:
 
 
 func _on_furniture_help_pressed() -> void:
+	_mark_player_activity()
 	_open_help_overlay("furniture")
 
 
@@ -164,6 +190,7 @@ func _on_phone_pressed() -> void:
 		return
 	if _layout_overlay != null and _layout_overlay.visible:
 		return
+	_mark_player_activity()
 	if _phone_overlay != null:
 		_phone_overlay.open_overlay()
 
@@ -277,11 +304,60 @@ func _on_character_interaction(interaction_name: String) -> void:
 		# 布置台：弹出自定义界面；不加好感度（与其它家具交互不同）
 		_open_layout_overlay()
 		return
+	match interaction_name:
+		"fridge":
+			_take_food()
+			return
+		"cook":
+			_cook_food()
+			return
+		"eat":
+			_eat_food()
+			return
+		"rest":
+			# 沙发：有食物时吃东西（与饭桌一致），否则按休息处理
+			if StatusManager.get_food() != "none":
+				_eat_food()
+				return
 	var added := GameManager.register_interaction(char_id, interaction_name)
 	if added:
 		status_label.text = "触发交互：%s（好感 +1）" % interaction_name
 	else:
 		status_label.text = "触发交互：%s" % interaction_name
+
+
+## ---------------- P2 进食链路 ----------------
+
+func _take_food() -> void:
+	StatusManager.set_food("raw")
+	MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "interaction", "fridge")
+	status_label.text = "从冰箱拿出了食物，可以直接吃，或去厨具加热"
+
+
+func _cook_food() -> void:
+	var food := StatusManager.get_food()
+	if food == "none":
+		status_label.text = "厨具空空的，先去冰箱拿点食物吧"
+		return
+	StatusManager.set_food("cooked")
+	StatusManager.apply_delta(0, 1, 0)
+	MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "interaction", "cook")
+	status_label.text = "做好饭啦！去饭桌（或沙发）吃吧（心情 +1）"
+
+
+func _eat_food() -> void:
+	var food := StatusManager.get_food()
+	if food == "none":
+		status_label.text = "还没有食物，去冰箱看看吧"
+		return
+	if food == "raw":
+		StatusManager.apply_delta(20, 0, 3)
+		status_label.text = "吃了一点生食（饱食 +20）"
+	else:
+		StatusManager.apply_delta(35, 2, 2)
+		status_label.text = "吃了一顿好饭（饱食 +35，心情 +2）"
+	StatusManager.set_food("none")
+	MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "interaction", "eat")
 
 
 func _open_computer_panel() -> void:
@@ -387,6 +463,406 @@ func _show_distract_fx() -> void:
 
 func _cancel_pending_trigger() -> void:
 	_pending_trigger_interaction = ""
+
+
+## ---------------- P2 自主行为（现实时间 / 状态驱动） ----------------
+
+const AUTONOMY_IDLE_DELAY := 8.0
+const AUTONOMY_PAUSE_MIN := 1.2
+const AUTONOMY_PAUSE_MAX := 3.0
+
+const WINDOW_CELLS := [Vector2i(0, 6), Vector2i(1, 6), Vector2i(0, 7), Vector2i(1, 7)]
+
+
+func _mark_player_activity() -> void:
+	## 任何玩家输入：重置空闲计时；正在自主则打断（电脑「一起玩」按钮点击除外，见按钮处理）。
+	_idle_since = 0.0
+	if _autonomy_active:
+		_stop_autonomy()
+
+
+func _can_autonomy_start() -> bool:
+	if _computer_panel.visible:
+		return false
+	if _settings_overlay.visible:
+		return false
+	if _help_overlay != null and _help_overlay.visible:
+		return false
+	if _layout_overlay != null and _layout_overlay.visible:
+		return false
+	return true
+
+
+func _autonomy_tick(delta: float) -> void:
+	if not _autonomy_active:
+		if _idle_since >= AUTONOMY_IDLE_DELAY and _can_autonomy_start():
+			_start_autonomy()
+		return
+	if not _autonomy_task.is_empty() and str(_autonomy_task.get("type", "")) == "computer_play" \
+			and str(_autonomy_task.get("phase", "")) == "playing":
+		var task: Dictionary = _autonomy_task
+		task["time_left"] = float(task["time_left"]) - delta
+		_autonomy_task = task
+		if float(task["time_left"]) <= 0.0:
+			_autonomy_playing_computer = false
+			_set_play_together_visible(false)
+			_autonomy_task = {}
+			_autonomy_wait = randf_range(2.0, 4.0)
+		return
+	if _autonomy_task.is_empty():
+		if _autonomy_wait > 0.0:
+			_autonomy_wait -= delta
+			if _autonomy_wait <= 0.0:
+				_begin_autonomy_task(_pick_autonomy_task())
+		else:
+			_begin_autonomy_task(_pick_autonomy_task())
+
+
+func _start_autonomy() -> void:
+	_autonomy_active = true
+	_autonomy_elapsed = 0.0
+	_autonomy_task = {}
+	_autonomy_wait = randf_range(1.5, 3.0)
+	status_label.text = "梅尔开始自己活动了…"
+
+
+func _stop_autonomy(_interrupt: bool = true) -> void:
+	_autonomy_active = false
+	_autonomy_task = {}
+	_autonomy_wait = 0.0
+	_autonomy_playing_computer = false
+	_set_play_together_visible(false)
+
+
+func _pick_autonomy_task() -> Dictionary:
+	var satiety := StatusManager.get_satiety()
+	var fatigue := StatusManager.get_fatigue()
+	var mood := StatusManager.get_mood()
+	var hour := int(Time.get_time_dict_from_system()["hour"])
+	var night := hour >= 22 or hour < 6
+
+	if satiety < 45:
+		return {"type": "eat"}
+	if night:
+		if fatigue > 30:
+			return {"type": "rest"}
+		return {"type": "window"} if mood < 50 else {"type": "wander"}
+	if fatigue > 60:
+		return {"type": "rest"}
+	if mood < 35:
+		return {"type": "window"}
+
+	var pool: Array = [
+		{"type": "wander"},
+		{"type": "wander"},
+		{"type": "furniture", "interaction": "read"},
+		{"type": "furniture", "interaction": "watch"},
+		{"type": "furniture", "interaction": "sit"},
+		{"type": "furniture", "interaction": "light"},
+		{"type": "furniture", "interaction": "water"},
+	]
+	if satiety < 65:
+		pool.append({"type": "eat"})
+	if randf() < 0.25:
+		pool.append({"type": "computer_play"})
+	var task: Dictionary = pool[randi() % pool.size()]
+	if str(task["type"]) == _last_autonomy_type and pool.size() > 1:
+		task = pool[(pool.find(task) + 1) % pool.size()]
+	return task
+
+
+func _begin_autonomy_task(task: Dictionary) -> void:
+	_last_autonomy_type = str(task["type"])
+	match str(task["type"]):
+		"wander":
+			_autonomy_task = task
+			_autonomy_move_to_target(_random_free_cell())
+		"window":
+			_autonomy_task = task
+			_autonomy_move_to_target(_pick_window_cell())
+		"furniture":
+			_autonomy_task = task
+			if not _autonomy_go_furniture(str(task["interaction"])):
+				_autonomy_task = {}
+				_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+		"eat":
+			_autonomy_task = {"type": "eat", "phase": "fridge"}
+			if not _autonomy_go_furniture("fridge"):
+				_autonomy_task = {}
+				_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+		"rest":
+			var interaction := "sleep" if StatusManager.get_fatigue() > 75 else "rest"
+			_autonomy_task = {"type": "rest", "interaction": interaction}
+			if not _autonomy_go_furniture(interaction):
+				_autonomy_task = {}
+				_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+		"computer_play":
+			_autonomy_task = {"type": "computer_play", "phase": "to_desk"}
+			if not _autonomy_go_furniture("computer"):
+				_autonomy_task = {}
+				_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+
+
+func _autonomy_move_to_target(target: Vector2i) -> void:
+	if target == character.current_cell:
+		_autonomy_arrived()
+		return
+	_target_cell = target
+	character.move_to_cell(target)
+
+
+func _autonomy_go_furniture(interaction: String) -> bool:
+	var entry := _find_furniture_by_interaction(interaction)
+	if entry.is_empty():
+		return false
+	var target := _find_nearest_free_cell_near_furniture(entry["cells"])
+	if target.x < 0:
+		return false
+	_autonomy_move_to_target(target)
+	return true
+
+
+func _autonomy_arrived() -> void:
+	if not _autonomy_active or _autonomy_task.is_empty():
+		return
+	var task: Dictionary = _autonomy_task
+	match str(task["type"]):
+		"wander", "window":
+			if str(task["type"]) == "window":
+				_bubble_show("（望着窗外发呆…）", 2.2)
+				StatusManager.apply_delta(0, 1, 0)
+				MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "autonomy", "在窗边发呆")
+			_autonomy_task = {}
+			_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+		"furniture":
+			_autonomy_do_furniture(str(task["interaction"]))
+		"rest":
+			_autonomy_do_rest(str(task.get("interaction", "rest")))
+		"eat":
+			_autonomy_eat_arrived(task)
+		"computer_play":
+			_autonomy_playing_computer = true
+			_set_play_together_visible(true)
+			task["phase"] = "playing"
+			task["time_left"] = randf_range(18.0, 32.0)
+			_autonomy_task = task
+			StatusManager.apply_delta(0, 2, 2)
+			_autonomy_diary("在电脑前玩了会儿")
+			_autonomy_maybe_gain()
+
+
+func _autonomy_do_furniture(interaction: String) -> void:
+	match interaction:
+		"read":
+			_bubble_show("（看了会儿书…）", 2.2)
+			StatusManager.apply_delta(0, 2, 1)
+		"watch":
+			_bubble_show("（津津有味地看电视…）", 2.2)
+			StatusManager.apply_delta(0, 2, 2)
+		"sit":
+			_bubble_show("（安安静静坐了一会儿…）", 2.2)
+			StatusManager.apply_delta(0, 1, 0)
+		"light":
+			_bubble_show("（开着灯看书…）", 2.2)
+			StatusManager.apply_delta(0, 1, 1)
+		"water":
+			_bubble_show("（给盆栽浇水…）", 2.2)
+			StatusManager.apply_delta(0, 1, 0)
+		_:
+			_bubble_show("（无所事事…）", 2.0)
+	_autonomy_diary("使用了「%s」" % interaction)
+	_autonomy_maybe_gain()
+	_autonomy_task = {}
+	_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+
+
+func _autonomy_do_rest(interaction: String) -> void:
+	if interaction == "sleep":
+		StatusManager.apply_delta(0, 2, -30)
+		_bubble_show("（好累，睡一小会儿…）", 2.5)
+		_autonomy_diary("去床上休息")
+		_autonomy_maybe_gain()
+	else:
+		StatusManager.apply_delta(0, 1, -20)
+		_bubble_show("（在沙发上瘫了一会儿…）", 2.5)
+		_autonomy_diary("在沙发休息")
+		_autonomy_maybe_gain()
+	_autonomy_task = {}
+	_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN + 2.0, AUTONOMY_PAUSE_MAX + 3.0)
+
+
+func _autonomy_eat_arrived(task: Dictionary) -> void:
+	match str(task["phase"]):
+		"fridge":
+			_take_food()
+			if StatusManager.get_satiety() < 35:
+				task["phase"] = "kitchen"
+			else:
+				task["phase"] = "dining"
+			_autonomy_task = task
+			var next_interaction := "cook" if str(task["phase"]) == "kitchen" else "eat"
+			if not _autonomy_go_furniture(next_interaction):
+				# 找不到位置就直接吃
+				_autonomy_task = {}
+				_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+		"kitchen":
+			_cook_food()
+			task["phase"] = "dining"
+			_autonomy_task = task
+			if not _autonomy_go_furniture("eat"):
+				_autonomy_task = {}
+				_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN, AUTONOMY_PAUSE_MAX)
+		"dining":
+			_eat_food()
+			_autonomy_diary("吃东西")
+			_autonomy_maybe_gain()
+			_autonomy_task = {}
+			_autonomy_wait = randf_range(AUTONOMY_PAUSE_MIN + 1.0, AUTONOMY_PAUSE_MAX + 2.0)
+
+
+func _autonomy_maybe_gain() -> void:
+	## 正式自主行为完成：50% 概率 +1，日上限 +3（StatusManager 内校验）。
+	if StatusManager.try_autonomy_affection(1):
+		var applied := GameManager.add_affection(
+			GameManager.CURRENT_CHAR_ID, 1, "自主行为", "autonomy"
+		)
+		if applied > 0:
+			_bubble_show("（+1 好感：自主行为）", 1.6)
+
+
+func _autonomy_diary(detail: String) -> void:
+	MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "autonomy", detail)
+
+
+func _pick_window_cell() -> Vector2i:
+	for cell in WINDOW_CELLS.duplicate():
+		if not _blocked_cells.has(cell):
+			return cell
+	return _random_free_cell()
+
+
+func _random_free_cell() -> Vector2i:
+	for _i in range(40):
+		var cell := Vector2i(randi() % GRID_SIZE.x, randi() % GRID_SIZE.y)
+		if not _blocked_cells.has(cell):
+			return cell
+	return character.current_cell
+
+
+func _find_furniture_by_interaction(interaction: String) -> Dictionary:
+	for furniture in _furniture_list:
+		if str(furniture["interaction"]) == interaction:
+			return furniture
+	return {}
+
+
+func _set_play_together_visible(visible: bool) -> void:
+	if play_together_button != null:
+		play_together_button.visible = visible
+
+
+func _on_play_together_pressed() -> void:
+	## 角色自主用电脑时玩家加入：直接打开电脑并进入游戏选择。
+	if _computer_panel != null:
+		_computer_panel.open_panel()
+		_computer_panel.open_game_select()
+	_autonomy_playing_computer = false
+	_set_play_together_visible(false)
+	_autonomy_active = false
+	_autonomy_task = {}
+	status_label.text = "和梅尔一起玩游戏吧！"
+
+
+func _bubble_show(text: String, duration: float = 3.0) -> void:
+	if _bubble != null:
+		_bubble.position = character.position + Vector2(4.0, -54.0)
+		_bubble.show_bubble(text, duration)
+
+
+## ---------------- P2 离线结算（现实时间模拟 + AI 情绪） ----------------
+
+const OFFLINE_MIN_SECONDS := 1800.0
+
+
+func _setup_offline_settlement() -> void:
+	var speed := maxf(float(ConfigManager.get_value("general", "dev_state_speed", 1)), 1.0)
+	var threshold := OFFLINE_MIN_SECONDS / speed
+	var offline := StatusManager.get_offline_seconds()
+	if offline >= threshold:
+		StatusManager.apply_offline_seconds(offline)
+		StatusManager.mark_seen()
+		_run_offline_ai_settlement(offline)
+	else:
+		StatusManager.mark_seen()
+
+
+func _run_offline_ai_settlement(seconds: float) -> void:
+	var char_id := GameManager.CURRENT_CHAR_ID
+	var persona := MemoryManager.get_persona_system(char_id)
+	var context: Array = MemoryManager.build_chat_context(char_id, persona)
+	var hours := int(seconds / 3600.0)
+	var mins := int(seconds / 60.0) % 60
+	var instruction := "主人在过去约%d小时%d分钟后回来陪你了（你独自生活了这么久）。" \
+		+ "请以梅尔的身份，结合人设、记忆和当前状态：%s。\n只输出一个 JSON 对象（不要其他文字、不要 Markdown 代码块）：" \
+		+ "{\"satiety\":-10,\"fatigue\":10,\"mood\":5,\"affection\":0或1,\"message\":\"20字以内想对主人说的话\"}。\n" \
+		+ "说明：satiety/fatigue 的自然变化已按离线时长先算过一次，这里输出这段经历带来的额外修正（整数，-10~+10）；" \
+		+ "mood 由独立生活的经历决定（整数，-15~+15）；affection=1 表示因为想念主人而好感+1（当天好感最多+3）。" \
+		% [hours, mins, StatusManager.get_state_summary()]
+	context.append({"role": "user", "content": instruction})
+	AIConnector.request_json(context, _on_offline_settled, _on_offline_settle_error)
+
+
+func _on_offline_settled(data: Dictionary) -> void:
+	StatusManager.apply_delta(
+		_clamp_val(data.get("satiety"), 0, -10, 10),
+		_clamp_val(data.get("mood"), 0, -15, 15),
+		_clamp_val(data.get("fatigue"), 0, -10, 10)
+	)
+	var message := str(data.get("message", "你回来啦…")).strip_edges()
+	if message.is_empty():
+		message = "你回来啦…"
+	_bubble_show(message, 4.0)
+	MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "autonomy", "离线归来：" + message)
+	var affection := _as_bool(data.get("affection", false))
+	if affection and StatusManager.add_autonomy_affection(1):
+		var applied := GameManager.add_affection(GameManager.CURRENT_CHAR_ID, 1, "离线想念", "offline")
+		if applied > 0:
+			status_label.text = "梅尔略带想念地望着你（好感 +1）"
+			return
+	status_label.text = "梅尔回来见你啦"
+
+
+func _on_offline_settle_error(_message: String) -> void:
+	_bubble_show("你不在的时候，梅尔过得安静又平淡…", 3.5)
+	status_label.text = "离线期间梅尔独自生活（结算失败，已按时间自动计算）"
+
+
+func _clamp_val(value, default: int, lo: int, hi: int) -> int:
+	var v := default
+	if value is int or value is float:
+		v = int(value)
+	elif value is String and (value as String).is_valid_int():
+		v = int(value)
+	return clampi(v, lo, hi)
+
+
+func _as_bool(value) -> bool:
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return int(value) != 0
+	if value is String:
+		var s := (value as String).strip_edges().to_lower()
+		return s in ["true", "yes", "是", "y", "1", "对", "想念"]
+	return false
+
+
+func _as_int(value, default: int) -> int:
+	if value is int or value is float:
+		return int(value)
+	if value is String and (value as String).is_valid_int():
+		return int(value)
+	return default
 
 
 func _set_attract_item(cell: Vector2i) -> void:
@@ -729,6 +1205,9 @@ func _draw_furniture() -> void:
 	_draw_chair()
 	_draw_tv()
 	_draw_sofa()
+	_draw_fridge()
+	_draw_kitchen()
+	_draw_dining()
 	_draw_window()
 	_draw_rug()
 	_draw_lamp()
@@ -921,9 +1400,49 @@ func _draw_sofa() -> void:
 	)
 
 
+func _draw_fridge() -> void:
+	var f := _cell_rect(_furniture_pos("fridge"), Vector2i(1, 1))
+	# 冰箱主体（浅蓝）
+	draw_rect(Rect2(f.position + Vector2(2, 1), Vector2(12, 13)), Color(0.80, 0.88, 0.95))
+	# 上下门缝
+	draw_line(f.position + Vector2(2, 8), f.position + Vector2(14, 8), Color(0.52, 0.62, 0.72), 1.0)
+	# 把手
+	draw_rect(Rect2(f.position + Vector2(10, 2), Vector2(2, 4)), Color(0.52, 0.62, 0.72))
+	draw_rect(Rect2(f.position + Vector2(10, 9), Vector2(2, 4)), Color(0.52, 0.62, 0.72))
+	# 底脚
+	draw_rect(Rect2(f.position + Vector2(3, 14), Vector2(2, 1)), Color(0.45, 0.55, 0.62))
+	draw_rect(Rect2(f.position + Vector2(11, 14), Vector2(2, 1)), Color(0.45, 0.55, 0.62))
+
+
+func _draw_kitchen() -> void:
+	var k := _cell_rect(_furniture_pos("kitchen"), Vector2i(2, 1))
+	# 台面
+	draw_rect(Rect2(k.position + Vector2(2, 6), Vector2(28, 8)), Color(0.48, 0.38, 0.32))
+	# 两块面板
+	draw_rect(Rect2(k.position + Vector2(4, 3), Vector2(10, 9)), Color(0.36, 0.28, 0.24))
+	draw_rect(Rect2(k.position + Vector2(18, 3), Vector2(10, 9)), Color(0.36, 0.28, 0.24))
+	# 灶眼
+	draw_circle(k.position + Vector2(9, 7.5), 2.4, Color(0.18, 0.14, 0.12))
+	draw_circle(k.position + Vector2(23, 7.5), 2.4, Color(0.18, 0.14, 0.12))
+	# 锅具
+	draw_rect(Rect2(k.position + Vector2(7, 5), Vector2(5, 3)), Color(0.55, 0.55, 0.60))
+
+
+func _draw_dining() -> void:
+	var d := _cell_rect(_furniture_pos("dining"), Vector2i(2, 1))
+	# 桌面
+	draw_rect(Rect2(d.position + Vector2(2, 8), Vector2(28, 5)), Color(0.72, 0.55, 0.38))
+	# 桌沿高光
+	draw_rect(Rect2(d.position + Vector2(2, 8), Vector2(28, 1)), Color(0.85, 0.68, 0.48))
+	# 桌腿
+	draw_rect(Rect2(d.position + Vector2(4, 13), Vector2(2, 2)), Color(0.48, 0.34, 0.24))
+	draw_rect(Rect2(d.position + Vector2(26, 13), Vector2(2, 2)), Color(0.48, 0.34, 0.24))
+	# 桌上小碗
+	draw_rect(Rect2(d.position + Vector2(13, 7), Vector2(6, 2)), Color(0.95, 0.82, 0.60))
+
+
 func _draw_plant() -> void:
-	var plant := _cell_rect(_furniture_pos("plant"), Vector2i(1, 1))
-	# 叶子
+	var plant := _cell_rect(_furniture_pos("plant"), Vector2i(1, 1))	# 叶子
 	draw_rect(
 		Rect2(plant.position + Vector2(6, 2), Vector2(4, 6)),
 		Color(0.45, 0.65, 0.40)
@@ -1110,6 +1629,9 @@ func _inside_grid(cell: Vector2i) -> bool:
 func _on_state_changed(state_name: String) -> void:
 	if state_name == "walk":
 		status_label.text = "角色正在走路…"
+		return
+	if _autonomy_active and not _autonomy_task.is_empty():
+		_autonomy_arrived()
 		return
 	_on_attract_arrived()
 	if _pending_trigger_interaction != "":

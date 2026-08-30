@@ -58,6 +58,7 @@ func _default_config() -> Dictionary:
 			"owner_name": "主人",
 			"auto_save": true,
 			"attract_item": "random",
+			"dev_state_speed": 1.0,
 		},
 		"display": {
 			"pixel_scale": 2,

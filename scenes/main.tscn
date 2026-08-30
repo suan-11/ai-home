@@ -53,6 +53,14 @@ offset_right = 472.0
 offset_bottom = 100.0
 text = "家具介绍"
 
+[node name="PlayTogetherButton" type="Button" parent="UI"]
+visible = false
+offset_left = 150.0
+offset_top = 104.0
+offset_right = 330.0
+offset_bottom = 132.0
+text = "一起玩"
+
 [node name="PortraitLayer" type="Control" parent="UI"]
 layout_mode = 1
 anchor_left = 0.0
