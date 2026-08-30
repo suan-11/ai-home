@@ -124,11 +124,23 @@ func _on_ai_reply(data: Dictionary) -> void:
 	reaction.emit(reply, emotion)
 	action_requested.emit(action)
 
-	var eligible := bool(data.get("affection", false))
+	var eligible := _parse_affection(data.get("affection", false))
 	var reason := str(data.get("reason", "手机消息"))
 	if eligible and GameManager.add_chat_affection(_char_id, eligible, reason):
 		var gain := GameManager.get_today_chat_gain(_char_id)
 		_enqueue_hint("好感 +1 · 今日 %d/%d" % [gain, GameManager.CHAT_DAILY_CAP])
+
+
+func _parse_affection(value) -> bool:
+	## 兼容模型返回的多种形式：bool / 数值 / 字符串。
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return int(value) != 0
+	if value is String:
+		var s := (value as String).strip_edges().to_lower()
+		return s in ["true", "yes", "是", "y", "1", "对", "加分"]
+	return false
 
 
 func _on_ai_error(message: String) -> void:

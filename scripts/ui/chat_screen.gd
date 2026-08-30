@@ -81,7 +81,9 @@ func _start_affection_judgement() -> void:
 		judge_messages.append(msg)
 	judge_messages.append({
 		"role": "user",
-		"content": "【好感度判定】基于刚才这轮对话，判断梅尔是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会。只输出JSON，不要其他文字：{\"affection\": true或false, \"reason\": \"10字以内理由\"}",
+		"content": "【好感度判定】基于刚才这轮对话，判断梅尔是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会。"
+			+ "请只输出一个 JSON 对象（不要输出任何其他文字，不要用 Markdown 代码块），且必须符合 JSON 语法：键和字符串用双引号，布尔值用 true/false（不加引号），例如："
+			+ "{\"affection\":true,\"reason\":\"被夸奖了\"}。affection 只能是 true 或 false，reason 是 10 字以内理由。",
 	})
 	AIConnector.request_json(
 		judge_messages,
@@ -94,8 +96,12 @@ func _on_affection_judged(data: Dictionary) -> void:
 	_judging = false
 	send_button.disabled = false
 	input_edit.editable = true
-	var eligible := bool(data.get("affection", false))
-	var reason := str(data.get("reason", "对话内容"))
+	var eligible := _parse_affection(data.get("affection", false))
+	var reason := str(data.get("reason", "")).strip_edges()
+	if reason.is_empty():
+		reason = "对话内容"
+	if reason.length() > 20:
+		reason = reason.substr(0, 20)
 	if eligible and GameManager.add_chat_affection(_char_id, true, reason):
 		var gain := GameManager.get_today_chat_gain(_char_id)
 		_append_message(
@@ -104,10 +110,23 @@ func _on_affection_judged(data: Dictionary) -> void:
 		)
 
 
+func _parse_affection(value) -> bool:
+	## 兼容模型返回的多种形式：bool / 数值 / 字符串。
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return int(value) != 0
+	if value is String:
+		var s := (value as String).strip_edges().to_lower()
+		return s in ["true", "yes", "是", "y", "1", "对", "加分"]
+	return false
+
+
 func _on_affection_error(_message: String) -> void:
 	_judging = false
 	send_button.disabled = false
 	input_edit.editable = true
+	_append_message("系统", "（好感判定未完成，本轮跳过）")
 
 
 func _on_chat_error(message: String) -> void:
