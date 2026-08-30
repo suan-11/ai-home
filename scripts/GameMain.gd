@@ -49,6 +49,7 @@ var _bubble: Control = null
 var _notify_fx: Control = null
 var _toast: Control = null
 var _notify_player: AudioStreamPlayer = null
+var _attract_seq := 0
 
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
@@ -125,9 +126,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not furniture.is_empty():
 				_handle_furniture_click(furniture)
 				return
-			_target_cell = cell
-			character.move_to_cell(cell)
-			status_label.text = "目标：格子 %s" % str(cell)
+			_attract_to_cell(cell)
 
 
 func _on_main_settings_pressed() -> void:
@@ -281,18 +280,88 @@ func _on_computer_panel_closed() -> void:
 
 
 func _handle_furniture_click(furniture: Dictionary) -> void:
+	_attract_to_furniture(furniture)
+
+
+## ---------------- P1 吸引移动（点击引导 + 主动靠近） ----------------
+
+const ATTRACT_AFTER_DELAY := 0.4   # 反应动作后出发的停顿
+const ATTRACT_AFFECT_CHANCE_HIGH := 0.9
+const ATTRACT_AFFECT_CHANCE_DEFAULT := 0.75
+
+
+func _attract_to_cell(cell: Vector2i) -> void:
+	if not _inside_grid(cell):
+		return
+	_attract_seq += 1
+	var seq := _attract_seq
+	_cancel_pending_trigger()
+	character.stop_movement()
+	_target_cell = cell
+	_show_attract_notice(true)
+	if not _will_respond():
+		if _bubble != null:
+			_bubble.position = character.position + Vector2(4.0, -54.0)
+			_bubble.show_bubble("？", 1.4)
+		status_label.text = "梅尔似乎没注意到…"
+		return
+	character.play_action("hop")
+	status_label.text = "梅尔被吸引了…"
+	await get_tree().create_timer(ATTRACT_AFTER_DELAY).timeout
+	if seq != _attract_seq:
+		return
+	character.move_to_cell(cell)
+
+
+func _attract_to_furniture(furniture: Dictionary) -> void:
+	_attract_seq += 1
+	var seq := _attract_seq
+	_cancel_pending_trigger()
+	character.stop_movement()
+	_target_cell = Vector2i(-1, -1)
+	_show_attract_notice(true)
+	if not _will_respond():
+		if _bubble != null:
+			_bubble.position = character.position + Vector2(4.0, -54.0)
+			_bubble.show_bubble("？", 1.4)
+		status_label.text = "梅尔似乎没注意到…"
+		return
+	character.play_action("hop")
+	status_label.text = "梅尔被%s吸引了…" % furniture["type"]
+	await get_tree().create_timer(ATTRACT_AFTER_DELAY).timeout
+	if seq != _attract_seq:
+		return
 	if _is_adjacent_to_furniture(character.current_cell, furniture["cells"]):
-		_target_cell = Vector2i(-1, -1)
 		character.trigger_interaction(furniture["interaction"])
-		status_label.text = "触发交互：%s" % furniture["interaction"]
-	else:
-		var target := _find_nearest_free_cell_near_furniture(furniture["cells"])
-		if target.x >= 0:
-			_target_cell = target
-			character.move_to_cell(target)
-			status_label.text = "走到%s旁边" % furniture["type"]
-		else:
-			status_label.text = "附近没有可站立的位置"
+		return
+	var target := _find_nearest_free_cell_near_furniture(furniture["cells"])
+	if target.x < 0:
+		status_label.text = "附近没有可站立的位置"
+		return
+	_pending_trigger_interaction = furniture["interaction"]
+	_target_cell = target
+	character.move_to_cell(target)
+
+
+func _will_respond() -> bool:
+	## 好感度影响“被吸引”意愿：≥70 必应；≥50 90%；其余 75%。
+	var affection := GameManager.get_affection(GameManager.CURRENT_CHAR_ID)
+	var chance := ATTRACT_AFFECT_CHANCE_DEFAULT
+	if affection >= 70:
+		chance = 1.0
+	elif affection >= 50:
+		chance = ATTRACT_AFFECT_CHANCE_HIGH
+	return randf() <= chance
+
+
+func _show_attract_notice(_respond: bool) -> void:
+	if _notify_fx != null:
+		_notify_fx.position = character.position + Vector2(-2.0, -60.0)
+		_notify_fx.play_effect(0.9)
+
+
+func _cancel_pending_trigger() -> void:
+	_pending_trigger_interaction = ""
 
 
 func _build_blocked_cells() -> Dictionary:
