@@ -206,37 +206,43 @@ func _generate_ai_expr() -> String:
 	return _ai_random_expr()
 
 
-## AI 瞄准版：构造一条在 x=16（对方水平距离）处穿过目标高度的函数。
+## AI 瞄准版：构造一条函数，使 f(16) - f(0) = delta（delta = 对方高度 - 自身高度）。
+## 常数项会因「相对出发点」而抵消，因此只生成无常数项的形状。
 func _ai_aimed_expr() -> String:
 	var delta := _player_y - _ai_y
 	match randi_range(0, 5):
 		0:
-			var a := randf_range(-0.6, 0.6)
-			return _compose([[a, "x"], [delta - a * 16.0, ""]])
+			return _compose([[delta / 16.0, "x"]])
 		1:
-			var a := randf_range(-0.12, 0.12)
-			return _compose([[a, "x^2"], [delta - a * 256.0, ""]])
+			return _compose([[delta / 256.0, "x^2"]])
 		2:
-			var a := randf_range(-0.6, 0.6)
-			return _compose([[a, "abs(x)"], [delta - a * 16.0, ""]])
+			return _compose([[delta / 16.0, "abs(x)"]])
 		3:
-			return _best_trig_expr(delta, false)
+			return _trig_expr(delta, false)
 		4:
-			return _best_trig_expr(delta, true)
+			return _trig_expr(delta, true)
 		_:
-			var a := randf_range(-0.1, 0.1)
-			var h := randf_range(0.0, 16.0)
-			return _compose([[a, "(x-%.3f)^2" % h], [delta - a * pow(16.0 - h, 2), ""]])
+			var h := 0.0
+			var denom := 0.0
+			for i in range(20):
+				h = randf_range(0.0, 16.0)
+				denom = 256.0 - 32.0 * h
+				if absf(denom) > 40.0:
+					break
+			return _compose([[delta / denom, "(x-%.3f)^2" % h]])
 
 
-func _best_trig_expr(delta: float, use_cos: bool) -> String:
-	# 解析求解：随机频率，直接反解常数项，使 x=16 时恰好等于 delta
-	var a := randf_range(-3.0, 3.0)
-	var b := randf_range(0.05, 2.0)
-	var wave := cos(b * 16.0) if use_cos else sin(b * 16.0)
-	var c := delta - a * wave
+func _trig_expr(delta: float, use_cos: bool) -> String:
+	var b := 0.0
+	var denom := 0.0
+	for i in range(20):
+		b = randf_range(0.05, 2.0)
+		denom = (cos(b * 16.0) - 1.0) if use_cos else sin(b * 16.0)
+		if absf(denom) > 0.25:
+			break
+	var a := clampf(delta / denom, -6.0, 6.0)
 	var unit := "cos(%.3f*x)" % b if use_cos else "sin(%.3f*x)" % b
-	return _compose([[a, unit], [c, ""]])
+	return _compose([[a, unit]])
 
 
 func _ai_random_expr() -> String:
@@ -476,6 +482,10 @@ func _is_letter(ch: String) -> bool:
 
 func _make_path(expr: String, start_x: float, start_y: float, dir: float) -> PackedVector2Array:
 	var points: Array[Vector2] = []
+	# 曲线相对出发点：起点固定为 (start_x, start_y)，形状 = f(x) - f(0)
+	var base := _eval_expr(expr, 0.0)
+	if _parse_failed or is_nan(base) or is_inf(base):
+		return PackedVector2Array()
 	var t := 0.0
 	while t <= MAX_TRAVEL + 0.001:
 		var y_off := _eval_expr(expr, t)
@@ -486,7 +496,7 @@ func _make_path(expr: String, start_x: float, start_y: float, dir: float) -> Pac
 		var x := start_x + dir * t
 		if x < X_MIN or x > X_MAX:
 			break
-		var y := start_y + y_off
+		var y := start_y + (y_off - base)
 		points.append(_world_to_screen(Vector2(x, clampf(y, Y_MIN - 2.0, Y_MAX + 2.0))))
 		t += 0.05
 	return PackedVector2Array(points)
