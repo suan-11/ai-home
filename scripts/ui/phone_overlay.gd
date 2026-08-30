@@ -5,10 +5,13 @@ extends Control
 ## - 通过信号通知 GameMain：提示音、气泡、动作动画、家具指令
 
 signal closed
+signal notification_triggered
 signal reaction(text: String, emotion: String)
 signal action_requested(action_name: String)
 
 const CHAR_ID := "char_03"
+const RECEIVE_DELAY := 1.0   # 发送后，角色“看到消息”的延迟
+const REPLY_DELAY := 0.8     # 通知后，AI 开始回复的延迟
 
 var _char_id := CHAR_ID
 var _messages: Array = []
@@ -72,7 +75,22 @@ func _on_send_pressed() -> void:
 	_waiting = true
 	send_button.disabled = true
 	input_edit.editable = false
+	_append_message("系统", "（已发送，等待梅尔查看…）")
 
+	# 1) 延迟：角色“收到消息”
+	await get_tree().create_timer(RECEIVE_DELAY).timeout
+	notification_triggered.emit()
+	_append_message("系统", "（梅尔收到了你的消息！）")
+
+	# 2) 小停顿后开始回复（触发 AI 结构化返回）
+	await get_tree().create_timer(REPLY_DELAY).timeout
+	if not _waiting:
+		return
+	_append_message("系统", "（她正在输入…）")
+	_request_ai()
+
+
+func _request_ai() -> void:
 	var request_messages: Array = _messages.duplicate(true)
 	request_messages.append({
 		"role": "user",

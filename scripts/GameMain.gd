@@ -16,6 +16,8 @@ const LAYOUT_OVERLAY_SCENE := preload("res://scenes/ui/room_layout_overlay.tscn"
 const HELP_OVERLAY_SCENE := preload("res://scenes/ui/help_overlay.tscn")
 const PHONE_OVERLAY_SCENE := preload("res://scenes/ui/phone_overlay.tscn")
 const BUBBLE_SCENE := preload("res://scenes/ui/bubble.tscn")
+const NOTIFY_FX_SCENE := preload("res://scenes/ui/notify_fx.tscn")
+const TOAST_SCENE := preload("res://scenes/ui/notification_toast.tscn")
 const NOTIFY_SOUND_PATH := "res://assets/sfx/notify.wav"
 const LAYOUT_PATH := "user://room_layout.json"
 
@@ -44,6 +46,8 @@ var _furniture_list: Array = []
 var _layout_objects: Array = []
 var _phone_overlay: Control = null
 var _bubble: Control = null
+var _notify_fx: Control = null
+var _toast: Control = null
 var _notify_player: AudioStreamPlayer = null
 
 @onready var character: CharacterBody2D = $Room/Character
@@ -73,9 +77,16 @@ func _ready() -> void:
 	_phone_overlay.closed.connect(_on_phone_overlay_closed)
 	_phone_overlay.reaction.connect(_on_phone_reaction)
 	_phone_overlay.action_requested.connect(_on_phone_action)
+	_phone_overlay.notification_triggered.connect(_on_phone_notification)
 
 	_bubble = BUBBLE_SCENE.instantiate()
 	$UI.add_child(_bubble)
+
+	_notify_fx = NOTIFY_FX_SCENE.instantiate()
+	$UI.add_child(_notify_fx)
+
+	_toast = TOAST_SCENE.instantiate()
+	$UI.add_child(_toast)
 
 	_notify_player = AudioStreamPlayer.new()
 	_notify_player.stream = load(NOTIFY_SOUND_PATH)
@@ -153,6 +164,18 @@ func _on_phone_reaction(text: String, _emotion: String) -> void:
 	if _bubble != null:
 		_bubble.position = character.position + Vector2(4.0, -54.0)
 		_bubble.show_bubble(text, 3.0)
+
+
+func _on_phone_notification() -> void:
+	## 角色“收到”手机消息：提示音 + 头顶特效 + 顶部通知横幅
+	_play_notify_sound()
+	if _notify_fx != null:
+		_notify_fx.position = character.position + Vector2(-2.0, -60.0)
+		_notify_fx.play_effect()
+	if _toast != null:
+		_toast.position = Vector2(292.0, 42.0)
+		_toast.show_toast()
+	status_label.text = "梅尔收到了新消息！"
 
 
 func _on_phone_action(action_name: String) -> void:
