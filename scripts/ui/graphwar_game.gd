@@ -238,23 +238,40 @@ func _ai_turn() -> void:
 	_start_round()
 
 
-## 根据发射后的路径结算：命中对方球 / 撞障碍 / 未命中。
+## 根据发射后的路径结算：击中的球全部被摧毁（炮弹穿透不消失），障碍挡住则被清除。
 func _apply_shot_result(result: Dictionary, is_player: bool) -> void:
-	if result["enemy"] >= 0:
-		var balls := _balls_ai if is_player else _balls_player
-		balls[result["enemy"]]["alive"] = false
+	var balls := _balls_ai if is_player else _balls_player
+	var parts: Array[String] = []
+	var hits: Array = result["enemies"]
+	if hits.size() > 0:
+		var names: Array[String] = []
+		for idx in hits:
+			balls[idx]["alive"] = false
+			if is_player:
+				_player_kills += 1
+			else:
+				_ai_kills += 1
+			names.append("球 %d" % (idx + 1))
 		if is_player:
-			_player_kills += 1
-			status_label.text = "命中！击毁 AI 的球 %d" % (result["enemy"] + 1)
+			parts.append("命中！击毁 AI 的%s" % _join_strings(names, "、"))
 		else:
-			_ai_kills += 1
-			status_label.text = "你的球 %d 被击毁了…" % (result["enemy"] + 1)
-	elif result["obstacle"] >= 0:
+			parts.append("你被击中了：%s" % _join_strings(names, "、"))
+	if result["obstacle"] >= 0:
 		_obstacles.remove_at(result["obstacle"])
-		status_label.text = "撞上球形障碍被挡住了（障碍已清除）"
-	else:
-		status_label.text = "未命中…再想想函数"
+		parts.append("撞上球形障碍被挡住（障碍已清除）")
+	if parts.is_empty():
+		parts.append("未命中…再想想函数")
+	status_label.text = _join_strings(parts, "；")
 	_update_score_label()
+
+
+func _join_strings(arr: Array, sep: String) -> String:
+	var s := ""
+	for i in range(arr.size()):
+		if i > 0:
+			s += sep
+		s += str(arr[i])
+	return s
 
 
 func _check_player_win() -> bool:
@@ -359,11 +376,12 @@ func _compose(terms: Array) -> String:
 
 ## ---------------- 轨迹构建（含障碍/对方球碰撞） ----------------
 
-## 从 start_world 出发沿函数建轨迹；碰到障碍或对方球即截断。
-## 返回 {path, enemy: -1 或索引, obstacle: -1 或索引}。
+## 从 start_world 出发沿函数建轨迹；碰到障碍或屏幕边缘才截断。
+## 命中对方球不停止炮弹（可连穿多个球），记录所有被击中的球。
+## 返回 {path, enemies: Array[索引], obstacle: -1 或索引}。
 func _build_shot(expr: String, start_world: Vector2, dir: float, is_player: bool) -> Dictionary:
 	var result := {
-		"path": PackedVector2Array(), "enemy": -1, "obstacle": -1,
+		"path": PackedVector2Array(), "enemies": [], "obstacle": -1,
 	}
 	var enemy_balls := _balls_ai if is_player else _balls_player
 	var base := _eval_expr(expr, 0.0)
@@ -381,33 +399,24 @@ func _build_shot(expr: String, start_world: Vector2, dir: float, is_player: bool
 		if w.x < X_MIN or w.x > X_MAX or absf(w.y) > Y_MAX * 2.0:
 			break
 		var s := _world_to_screen(w)
+		# 命中对方球：记录但不停止炮弹（穿透）
+		for i in range(enemy_balls.size()):
+			var eb: Dictionary = enemy_balls[i]
+			if not eb["alive"] or result["enemies"].has(i):
+				continue
+			if _segment_circle(prev, s, _world_to_screen(eb["pos"]), BALL_HIT_PX) >= 0.0:
+				result["enemies"].append(i)
+		# 障碍：挡住并截断
 		var best_t := 1.0
-		var best_kind := ""
 		var best_obstacle := -1
-		var best_enemy := -1
-		# 障碍
 		for i in range(_obstacles.size()):
 			var o: Dictionary = _obstacles[i]
 			var tt := _segment_circle(prev, s, o["pos"], o["r"])
 			if tt >= 0.0 and tt < best_t:
 				best_t = tt
-				best_kind = "obstacle"
 				best_obstacle = i
-				best_enemy = -1
-		# 对方球
-		for i in range(enemy_balls.size()):
-			var eb: Dictionary = enemy_balls[i]
-			if not eb["alive"]:
-				continue
-			var tt2 := _segment_circle(prev, s, _world_to_screen(eb["pos"]), BALL_HIT_PX)
-			if tt2 >= 0.0 and tt2 < best_t:
-				best_t = tt2
-				best_kind = "enemy"
-				best_enemy = i
-				best_obstacle = -1
-		if best_kind != "":
+		if best_obstacle >= 0:
 			points.append(prev.lerp(s, best_t))
-			result["enemy"] = best_enemy
 			result["obstacle"] = best_obstacle
 			break
 		points.append(s)
