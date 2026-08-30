@@ -1,6 +1,18 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/graphwar_game.gd" id="1_game"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tutorial"]
+bg_color = Color(0.04, 0.04, 0.06, 0.98)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5, 0.55, 0.65, 1.0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="GraphwarGame" type="Control"]
 layout_mode = 3
@@ -43,7 +55,7 @@ offset_left = 10.0
 offset_top = 32.0
 offset_right = -10.0
 offset_bottom = 52.0
-text = "你的回合：已选球 1，输入函数后开火（可点击其它球）"
+text = "你的回合：已选球 1，输入函数后开火（球发射后仍在场）"
 horizontal_alignment = 0
 
 [node name="Controls" type="Control" parent="."]
@@ -59,19 +71,21 @@ layout_mode = 0
 offset_left = 0.0
 offset_top = 0.0
 offset_right = 124.0
-offset_bottom = 48.0
+offset_bottom = 0.0
 text = ""
-horizontal_alignment = 0
-vertical_alignment = 0
 autowrap_mode = 2
 
 [node name="HintLabel" type="Label" parent="Controls"]
 layout_mode = 0
 offset_left = 0.0
-offset_top = 50.0
+offset_top = 0.0
 offset_right = 124.0
-offset_bottom = 94.0
-text = "点击左侧自己的球切换发射球；x = 离开出发点的水平距离；轨迹随炮弹逐步显示。"
+offset_bottom = 88.0
+text = "点击左侧自己的球切换发射球（发射后仍在场，被 AI 击毁才消失）。
+
+x = 离开球心的水平距离；轨迹随炮弹逐步显示。
+
+先击毁 AI 全部 3 球获胜；球形障碍会挡下炮弹并消失。"
 horizontal_alignment = 0
 vertical_alignment = 0
 autowrap_mode = 2
@@ -79,17 +93,17 @@ autowrap_mode = 2
 [node name="RestartButton" type="Button" parent="Controls"]
 layout_mode = 0
 offset_left = 0.0
-offset_top = 98.0
+offset_top = 92.0
 offset_right = 124.0
-offset_bottom = 120.0
+offset_bottom = 114.0
 text = "重新开始"
 
 [node name="BackButton" type="Button" parent="Controls"]
 layout_mode = 0
 offset_left = 0.0
-offset_top = 124.0
+offset_top = 118.0
 offset_right = 124.0
-offset_bottom = 146.0
+offset_bottom = 140.0
 text = "退出"
 
 [node name="BottomBar" type="Control" parent="."]
@@ -191,6 +205,7 @@ offset_bottom = 124.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_tutorial")
 
 [node name="TutorialTitle" type="Label" parent="TutorialPanel"]
 layout_mode = 1
@@ -203,7 +218,7 @@ offset_bottom = 34.0
 text = "教程"
 horizontal_alignment = 1
 
-[node name="TutorialText" type="Label" parent="TutorialPanel"]
+[node name="TutorialText" type="RichTextLabel" parent="TutorialPanel"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -212,19 +227,21 @@ offset_left = 14.0
 offset_top = 38.0
 offset_right = -14.0
 offset_bottom = -40.0
+scroll_active = true
+scroll_following = false
+fit_content = false
+autowrap_mode = 2
 text = "玩法：双方各 3 个球（左侧蓝菱形是你，右侧红圆是 AI）。每回合点击自己一个剩余球（自动选中，可切换），输入函数 f(x) 开火；炮弹从该球出发，沿「y = 该球高度 + f(x) − f(0)」飞行，轨迹随炮弹逐步显示。
 
-· x = 离开出发点的水平距离（坐标范围水平 −50~50、垂直 −25~25）。
-· 先击毁对方全部 3 球获胜；场上的随机球形障碍会挡住炮弹（被撞后消失）。
+· 发射的球不会消失，只有被 AI 命中才会被击毁；先击毁对方全部 3 球获胜。
+· x = 离开球心的水平距离（坐标范围水平 −50~50、垂直 −25~25）。
+· 场上的随机球形障碍会挡住炮弹（被撞后消失）。
 · 想命中对方球：f(距离) − f(0) ≈ 目标比你高/低的数值。
 · 例：f(x)= x/10 - 2；sin(x)+1；exp(x/20) - 2；(x-8)^2/16 - 4。
 · 支持：+ - * / ^ ( ) 数字、x、pi，以及 sin cos tan abs sqrt ln exp；乘号可省略，如 0.5x。
 · 回车或点「开火」发射；公式无效会提示。
 
 AI 也会用函数攻击你，注意它的曲线！"
-horizontal_alignment = 0
-vertical_alignment = 1
-autowrap_mode = 2
 
 [node name="CloseButton" type="Button" parent="TutorialPanel"]
 layout_mode = 1

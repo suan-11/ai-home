@@ -194,11 +194,9 @@ func _on_fire_pressed(_text: String = "") -> void:  # 兼容 LineEdit.text_submi
 	_player_expr = expr
 	_phase = Phase.PLAYER_FIRE
 	fire_button.disabled = true
-	# 消耗本次发射的球
-	ball["alive"] = false
 	var path_result := _build_shot(_player_expr, ball["pos"], 1.0, true)
 	_player_path = path_result["path"]
-	status_label.text = "发射！球 %d 出发了" % (_selected_ball + 1)
+	status_label.text = "发射！球 %d 出发了（发射后仍在场）" % (_selected_ball + 1)
 	await _animate_projectile(_player_path, Color(0.55, 0.85, 1.0))
 	if _phase != Phase.PLAYER_FIRE:
 		return
@@ -223,9 +221,7 @@ func _ai_turn() -> void:
 	_ai_expr = shot["expr"]
 	var ball_index: int = shot["ball_index"]
 	var ball_pos: Vector2 = _balls_ai[ball_index]["pos"]
-	_balls_ai[ball_index]["alive"] = false
-	ai_status_label.text = "AI 函数：「%s」（球 %d）" % [_ai_expr, ball_index + 1]
-	status_label.text = "AI 发射！"
+	status_label.text = "AI 使用了「%s」（球 %d）" % [_ai_expr, ball_index + 1]
 	_phase = Phase.AI_FIRE
 	var path_result := _build_shot(_ai_expr, ball_pos, -1.0, false)
 	_ai_path = path_result["path"]
@@ -763,9 +759,8 @@ func _start_round() -> void:
 	_active_path = PackedVector2Array()
 	_ball_pos = Vector2.ZERO
 	fire_button.disabled = false
-	ai_status_label.text = ""
 	_selected_ball = _first_alive_player_ball()
-	status_label.text = "你的回合：已选球 %d，输入函数后开火（可点击其它球）" % (_selected_ball + 1)
+	status_label.text = "你的回合：已选球 %d，输入函数后开火（球发射后仍在场）" % (_selected_ball + 1)
 	_update_score_label()
 	queue_redraw()
 
