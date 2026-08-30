@@ -19,6 +19,7 @@ enum Transition {
 const SCREEN_DESKTOP := "desktop"
 const SCREEN_GAMES := "games"
 const SCREEN_GOMOKU := "gomoku"
+const SCREEN_GRAPHWAR := "graphwar"
 const SCREEN_SETTINGS := "settings"
 const SCREEN_CHAT := "chat"
 const SCREEN_DIARY := "diary"
@@ -26,6 +27,7 @@ const SCREEN_DIARY := "diary"
 const DESKTOP_SCENE := preload("res://scenes/ui/desktop_screen.tscn")
 const GAME_SELECT_SCENE := preload("res://scenes/ui/game_select.tscn")
 const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
+const GRAPHWAR_SCENE := preload("res://scenes/ui/graphwar_game.tscn")
 const SETTINGS_SCENE := preload("res://scenes/ui/settings_screen.tscn")
 const CHAT_SCENE := preload("res://scenes/ui/chat_screen.tscn")
 const DIARY_SCENE := preload("res://scenes/ui/diary_screen.tscn")
@@ -97,6 +99,10 @@ func open_gomoku(transition: int = Transition.SLIDE_LEFT) -> void:
 	_open_screen(SCREEN_GOMOKU, GOMOKU_SCENE, transition, true)
 
 
+func open_graphwar(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_GRAPHWAR, GRAPHWAR_SCENE, transition, true)
+
+
 func open_settings(transition: int = Transition.SLIDE_LEFT) -> void:
 	_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, true)
 
@@ -120,6 +126,8 @@ func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
 			_open_screen(SCREEN_GAMES, GAME_SELECT_SCENE, transition, false)
 		SCREEN_GOMOKU:
 			_open_screen(SCREEN_GOMOKU, GOMOKU_SCENE, transition, false)
+		SCREEN_GRAPHWAR:
+			_open_screen(SCREEN_GRAPHWAR, GRAPHWAR_SCENE, transition, false)
 		SCREEN_SETTINGS:
 			_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, false)
 		SCREEN_CHAT:
@@ -182,8 +190,11 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 			screen.diary_requested.connect(open_diary)
 		SCREEN_GAMES:
 			screen.gomoku_requested.connect(open_gomoku)
+			screen.graphwar_requested.connect(open_graphwar)
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_GOMOKU:
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
+		SCREEN_GRAPHWAR:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_SETTINGS:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))

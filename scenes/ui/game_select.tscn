@@ -56,18 +56,26 @@ offset_right = 360.0
 offset_bottom = 98.0
 text = "五子棋"
 
-[node name="FutureButton" type="Button" parent="WindowPanel"]
+[node name="GraphwarButton" type="Button" parent="WindowPanel"]
 layout_mode = 0
 offset_left = 36.0
 offset_top = 108.0
 offset_right = 360.0
 offset_bottom = 146.0
-text = "更多游戏（待添加）"
+text = "Graphwar 函数对打"
 
-[node name="BackButton" type="Button" parent="WindowPanel"]
+[node name="FutureButton" type="Button" parent="WindowPanel"]
 layout_mode = 0
 offset_left = 36.0
 offset_top = 156.0
 offset_right = 360.0
 offset_bottom = 194.0
+text = "更多游戏（待添加）"
+
+[node name="BackButton" type="Button" parent="WindowPanel"]
+layout_mode = 0
+offset_left = 36.0
+offset_top = 204.0
+offset_right = 360.0
+offset_bottom = 242.0
 text = "返回桌面"

@@ -1,0 +1,192 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/graphwar_game.gd" id="1_game"]
+
+[node name="GraphwarGame" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_game")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 10.0
+offset_right = -130.0
+offset_bottom = 32.0
+text = "Graphwar 函数对打"
+horizontal_alignment = 0
+
+[node name="ScoreLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -120.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 32.0
+text = "你 0 : 0 AI"
+horizontal_alignment = 2
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 10.0
+offset_top = 34.0
+offset_right = 300.0
+offset_bottom = 54.0
+text = "你的回合：选择函数卡并调参，点击「开火」"
+horizontal_alignment = 0
+
+[node name="Controls" type="Control" parent="."]
+layout_mode = 0
+offset_left = 306.0
+offset_top = 34.0
+offset_right = 426.0
+offset_bottom = 262.0
+mouse_filter = 0
+
+[node name="CardLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 120.0
+offset_bottom = 16.0
+text = "函数卡"
+
+[node name="CardOption" type="OptionButton" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 16.0
+offset_right = 120.0
+offset_bottom = 40.0
+
+[node name="Param0Label" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 46.0
+offset_right = 120.0
+offset_bottom = 60.0
+text = "a = 0.00"
+
+[node name="Param0Slider" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 62.0
+offset_right = 120.0
+offset_bottom = 76.0
+
+[node name="Param1Label" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 82.0
+offset_right = 120.0
+offset_bottom = 96.0
+text = "b = 0.00"
+
+[node name="Param1Slider" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 98.0
+offset_right = 120.0
+offset_bottom = 112.0
+
+[node name="Param2Label" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 118.0
+offset_right = 120.0
+offset_bottom = 132.0
+text = "c = 0.00"
+
+[node name="Param2Slider" type="HSlider" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 134.0
+offset_right = 120.0
+offset_bottom = 148.0
+
+[node name="FireButton" type="Button" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 156.0
+offset_right = 120.0
+offset_bottom = 180.0
+text = "开火"
+
+[node name="AiStatusLabel" type="Label" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 184.0
+offset_right = 120.0
+offset_bottom = 208.0
+text = ""
+horizontal_alignment = 0
+autowrap_mode = 2
+
+[node name="RestartButton" type="Button" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 212.0
+offset_right = 120.0
+offset_bottom = 234.0
+text = "重新开始"
+
+[node name="BackButton" type="Button" parent="Controls"]
+layout_mode = 0
+offset_left = 0.0
+offset_top = 238.0
+offset_right = 120.0
+offset_bottom = 260.0
+text = "退出"
+
+[node name="ResultPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -120.0
+offset_top = -76.0
+offset_right = 120.0
+offset_bottom = 76.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="ResultLabel" type="Label" parent="ResultPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 44.0
+text = "结果"
+horizontal_alignment = 1
+
+[node name="RestartResultButton" type="Button" parent="ResultPanel"]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 52.0
+offset_right = 210.0
+offset_bottom = 84.0
+text = "再来一局"
+
+[node name="ExitResultButton" type="Button" parent="ResultPanel"]
+layout_mode = 0
+offset_left = 30.0
+offset_top = 94.0
+offset_right = 210.0
+offset_bottom = 126.0
+text = "退出"
