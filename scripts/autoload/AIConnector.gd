@@ -147,12 +147,45 @@ func _handle_json(content: String) -> void:
 		else:
 			json_reply.emit(data)
 	else:
-		_fail("AI 返回的不是有效 JSON", _on_error)
+		print("[AIConnector] JSON 解析失败，AI 返回原文：\n", content)
+		_fail("AI 返回的不是有效 JSON（已记录到控制台）", _on_error)
 
 
 func _extract_json(content: String):
-	var start := content.find("{")
-	var end := content.rfind("}")
-	if start < 0 or end <= start:
+	var text := content.strip_edges()
+	# 去掉 Markdown 代码围栏（```json 或 ```）
+	text = text.replace("`json", "").replace("```", "")
+	var parsed = JSON.parse_string(text)
+	if parsed is Dictionary:
+		return parsed
+	var start := text.find("{")
+	if start < 0:
 		return null
-	return JSON.parse_string(content.substr(start, end - start + 1))
+	# 从第一个 { 起做括号配对，提取最外层 JSON 对象（跳过字符串里的引号与转义）
+	var in_str := false
+	var escaped := false
+	var depth := 0
+	for i in range(start, text.length()):
+		var ch := text[i]
+		if escaped:
+			escaped = false
+			continue
+		if in_str and ch == "\\":
+			escaped = true
+			continue
+		if ch == "\"":
+			in_str = not in_str
+			continue
+		if in_str:
+			continue
+		if ch == "{":
+			depth += 1
+		elif ch == "}":
+			depth -= 1
+			if depth == 0:
+				var candidate := text.substr(start, i - start + 1)
+				parsed = JSON.parse_string(candidate)
+				if parsed is Dictionary:
+					return parsed
+				return null
+	return null
