@@ -14,6 +14,9 @@ const COMPUTER_PANEL_SCENE := preload("res://scenes/ui/computer_panel.tscn")
 const SETTINGS_OVERLAY_SCENE := preload("res://scenes/ui/main_settings_overlay.tscn")
 const LAYOUT_OVERLAY_SCENE := preload("res://scenes/ui/room_layout_overlay.tscn")
 const HELP_OVERLAY_SCENE := preload("res://scenes/ui/help_overlay.tscn")
+const PHONE_OVERLAY_SCENE := preload("res://scenes/ui/phone_overlay.tscn")
+const BUBBLE_SCENE := preload("res://scenes/ui/bubble.tscn")
+const NOTIFY_SOUND_PATH := "res://assets/sfx/notify.wav"
 const LAYOUT_PATH := "user://room_layout.json"
 
 ## 家具规格表（id / 显示名 / 交互名 / 功能说明 / 尺寸 / 默认位置 / 布置网格用颜色）
@@ -35,9 +38,13 @@ var _settings_overlay: Control = null
 var _layout_overlay: Control = null
 var _help_overlay: Control = null
 var _pending_guide := false
+var _pending_trigger_interaction := ""
 var _blocked_cells: Dictionary = {}
 var _furniture_list: Array = []
 var _layout_objects: Array = []
+var _phone_overlay: Control = null
+var _bubble: Control = null
+var _notify_player: AudioStreamPlayer = null
 
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
@@ -59,6 +66,20 @@ func _ready() -> void:
 	_settings_overlay.closed.connect(_on_settings_overlay_closed)
 	$UI/SettingsButton.pressed.connect(_on_main_settings_pressed)
 	$UI/FurnitureButton.pressed.connect(_on_furniture_help_pressed)
+	$UI/PhoneButton.pressed.connect(_on_phone_pressed)
+
+	_phone_overlay = PHONE_OVERLAY_SCENE.instantiate()
+	$UI.add_child(_phone_overlay)
+	_phone_overlay.closed.connect(_on_phone_overlay_closed)
+	_phone_overlay.reaction.connect(_on_phone_reaction)
+	_phone_overlay.action_requested.connect(_on_phone_action)
+
+	_bubble = BUBBLE_SCENE.instantiate()
+	$UI.add_child(_bubble)
+
+	_notify_player = AudioStreamPlayer.new()
+	_notify_player.stream = load(NOTIFY_SOUND_PATH)
+	add_child(_notify_player)
 
 	status_label.text = "温馨小屋：点击地板移动，F11 切换全屏"
 	queue_redraw()
@@ -109,6 +130,72 @@ func _on_settings_overlay_closed() -> void:
 
 func _on_furniture_help_pressed() -> void:
 	_open_help_overlay("furniture")
+
+
+## ---------------- P0 手机消息 ----------------
+
+
+func _on_phone_pressed() -> void:
+	if _computer_panel.visible or _settings_overlay.visible or _help_overlay != null and _help_overlay.visible:
+		return
+	if _layout_overlay != null and _layout_overlay.visible:
+		return
+	if _phone_overlay != null:
+		_phone_overlay.open_overlay()
+
+
+func _on_phone_overlay_closed() -> void:
+	status_label.text = "手机已收起"
+
+
+func _on_phone_reaction(text: String, _emotion: String) -> void:
+	_play_notify_sound()
+	if _bubble != null:
+		_bubble.position = character.position + Vector2(4.0, -54.0)
+		_bubble.show_bubble(text, 3.0)
+
+
+func _on_phone_action(action_name: String) -> void:
+	var interactions := ["sleep", "read", "sit", "watch", "rest", "light", "water", "computer"]
+	if action_name in interactions:
+		_move_to_furniture_and_trigger(action_name)
+		return
+	match action_name:
+		"wave", "hop", "sad":
+			character.stop_movement()
+			character.play_action(action_name)
+		_:
+			character.stop_movement()
+			character.play_action("wave")
+
+
+func _play_notify_sound() -> void:
+	if _notify_player != null and _notify_player.stream != null:
+		_notify_player.play()
+
+
+func _move_to_furniture_and_trigger(interaction_name: String) -> void:
+	var entry := {}
+	for furniture in _furniture_list:
+		if str(furniture["interaction"]) == interaction_name:
+			entry = furniture
+			break
+	if entry.is_empty():
+		return
+	if _is_adjacent_to_furniture(character.current_cell, entry["cells"]):
+		character.trigger_interaction(interaction_name)
+		return
+	var target := _find_nearest_free_cell_near_furniture(entry["cells"])
+	if target.x < 0:
+		status_label.text = "手机指令：%s 附近没有可站立位置" % interaction_name
+		return
+	if target == character.current_cell:
+		character.trigger_interaction(interaction_name)
+		return
+	_pending_trigger_interaction = interaction_name
+	_target_cell = target
+	character.move_to_cell(target)
+	status_label.text = "手机指令：走向 %s" % interaction_name
 
 
 func _open_help_overlay(mode: String) -> void:
@@ -847,5 +934,11 @@ func _inside_grid(cell: Vector2i) -> bool:
 func _on_state_changed(state_name: String) -> void:
 	if state_name == "walk":
 		status_label.text = "角色正在走路…"
-	else:
-		status_label.text = "角色已到达"
+		return
+	if _pending_trigger_interaction != "":
+		var interaction_name := _pending_trigger_interaction
+		_pending_trigger_interaction = ""
+		_target_cell = Vector2i(-1, -1)
+		character.trigger_interaction(interaction_name)
+		return
+	status_label.text = "角色已到达"

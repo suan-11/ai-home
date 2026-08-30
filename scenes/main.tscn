@@ -1,8 +1,10 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/GameMain.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/char/char_controller.gd" id="2_char"]
 [ext_resource type="Texture2D" path="res://assets/chars/char_03/portrait.png" id="3_portrait"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_settings.svg" id="4_settings_icon"]
+[ext_resource type="Texture2D" path="res://assets/ui/icon_phone.svg" id="5_phone_icon"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -29,13 +31,26 @@ offset_left = 360.0
 offset_top = 8.0
 offset_right = 472.0
 offset_bottom = 36.0
-text = "设置"
+tooltip_text = "设置"
+icon = ExtResource("4_settings_icon")
+icon_alignment = 1
+text = ""
 
-[node name="FurnitureButton" type="Button" parent="UI"]
+[node name="PhoneButton" type="Button" parent="UI"]
 offset_left = 360.0
 offset_top = 40.0
 offset_right = 472.0
 offset_bottom = 68.0
+tooltip_text = "手机"
+icon = ExtResource("5_phone_icon")
+icon_alignment = 1
+text = ""
+
+[node name="FurnitureButton" type="Button" parent="UI"]
+offset_left = 360.0
+offset_top = 72.0
+offset_right = 472.0
+offset_bottom = 100.0
 text = "家具介绍"
 
 [node name="PortraitLayer" type="Control" parent="UI"]

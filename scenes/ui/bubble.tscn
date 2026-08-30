@@ -1,0 +1,40 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/bubble.gd" id="1_bubble"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bubble"]
+bg_color = Color(0.16, 0.13, 0.18, 0.94)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.95, 0.87, 0.62, 0.9)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 7.0
+content_margin_top = 4.0
+content_margin_right = 7.0
+content_margin_bottom = 4.0
+
+[node name="Bubble" type="Control"]
+visible = false
+custom_minimum_size = Vector2(150, 40)
+mouse_filter = 2
+script = ExtResource("1_bubble")
+
+[node name="Panel" type="PanelContainer" parent="."]
+offset_right = 150.0
+offset_bottom = 40.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bubble")
+mouse_filter = 2
+
+[node name="Label" type="RichTextLabel" parent="Panel"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+bbcode_enabled = true
+scroll_active = false
+fit_content = true

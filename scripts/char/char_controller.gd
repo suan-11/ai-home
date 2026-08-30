@@ -22,6 +22,7 @@ var _pathfinder := GridPathfinder.new()
 var _state_machine := CharacterStateMachine.new()
 var _path: Array = []
 var _sprite: AnimatedSprite2D
+var _action_tween: Tween
 
 
 func _ready() -> void:
@@ -43,6 +44,52 @@ func trigger_interaction(interaction_name: String) -> void:
 	_sprite.play("idle")
 	interaction_triggered.emit(interaction_name)
 	print("[Interaction] ", interaction_name)
+
+
+func stop_movement() -> void:
+	## 停下当前寻路，回到待机（用于手机指令中的情绪动作）。
+	_path.clear()
+	if _state_machine.is_state(CharacterStateMachine.State.WALK_TO):
+		_state_machine.change_state(CharacterStateMachine.State.IDLE)
+		_sprite.play("idle")
+		state_changed.emit("idle")
+
+
+func play_action(action_name: String) -> void:
+	## 轻量动作动画：wave / hop / sad；不打断物理移动循环。
+	if not is_inside_tree():
+		return
+	_kill_action_tween()
+	match action_name:
+		"wave":
+			_action_tween = create_tween().set_loops(3)
+			_action_tween.tween_property(_sprite, "rotation", deg_to_rad(-14.0), 0.08)
+			_action_tween.tween_property(_sprite, "rotation", deg_to_rad(14.0), 0.16)
+			_action_tween.tween_property(_sprite, "rotation", 0.0, 0.08)
+			_action_tween.finished.connect(func() -> void: _sprite.rotation = 0.0)
+		"hop":
+			_action_tween = create_tween().set_loops(2)
+			_action_tween.tween_property(_sprite, "position:y", -6.0, 0.09) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			_action_tween.tween_property(_sprite, "position:y", 0.0, 0.09) \
+				.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			_action_tween.finished.connect(func() -> void: _sprite.position = Vector2.ZERO)
+		"sad":
+			_action_tween = create_tween()
+			_action_tween.tween_property(_sprite, "rotation", deg_to_rad(8.0), 0.2)
+			_action_tween.tween_interval(0.5)
+			_action_tween.tween_property(_sprite, "rotation", 0.0, 0.15)
+			_action_tween.finished.connect(func() -> void: _sprite.rotation = 0.0)
+		_:
+			return
+
+
+func _kill_action_tween() -> void:
+	if _action_tween != null and _action_tween.is_valid():
+		_action_tween.kill()
+		_action_tween = null
+	_sprite.position = Vector2.ZERO
+	_sprite.rotation = 0.0
 
 
 func set_grid(origin: Vector2, size: Vector2i) -> void:

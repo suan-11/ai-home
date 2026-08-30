@@ -1,0 +1,101 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/phone_overlay.gd" id="1_phone"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_phone"]
+bg_color = Color(0.16, 0.13, 0.18, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.95, 0.87, 0.62, 0.55)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="PhoneOverlay" type="Control"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_phone")
+
+[node name="Panel" type="Panel" parent="."]
+layout_mode = 1
+offset_left = 296.0
+offset_top = 108.0
+offset_right = 472.0
+offset_bottom = 340.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_phone")
+
+[node name="TitleLabel" type="Label" parent="Panel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 10.0
+offset_top = 5.0
+offset_right = -40.0
+offset_bottom = 24.0
+grow_horizontal = 2
+text = "梅尔 · 手机"
+
+[node name="CloseButton" type="Button" parent="Panel"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -36.0
+offset_top = 2.0
+offset_right = -8.0
+offset_bottom = 22.0
+grow_horizontal = 0
+text = "×"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 28.0
+offset_right = -8.0
+offset_bottom = -38.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+
+[node name="MessageLabel" type="RichTextLabel" parent="Panel/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+bbcode_enabled = true
+scroll_active = false
+fit_content = true
+
+[node name="BottomBar" type="HBoxContainer" parent="Panel"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = -32.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="InputEdit" type="LineEdit" parent="Panel/BottomBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "发消息…"
+
+[node name="SendButton" type="Button" parent="Panel/BottomBar"]
+layout_mode = 2
+text = "发送"
