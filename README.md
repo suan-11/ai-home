@@ -65,7 +65,9 @@
 ai-home/
 ├── project.godot
 ├── assets/
-│   └── chars/              # 角色资源（含规范说明 README.md）
+│   ├── chars/              # 角色资源（含规范说明 README.md）
+│   ├── ui/                 # 图标（设置/手机 SVG）
+│   └── sfx/                # 音效（手机消息提示音 notify.wav）
 ├── scenes/
 │   ├── main.tscn           # 主场景
 │   └── ui/
@@ -78,6 +80,8 @@ ai-home/
 │       ├── help_overlay.tscn      # 新手攻略 / 家具介绍
 │       ├── phone_overlay.tscn     # 手机消息小窗（P0）
 │       ├── bubble.tscn            # 角色对话气泡（P0）
+│       ├── notify_fx.tscn         # 收到消息头顶「！」特效（P0）
+│       ├── notification_toast.tscn # 收到消息顶部通知横幅（P0）
 │       ├── room_layout_overlay.tscn  # 房间布置界面
 │       └── main_settings_overlay.tscn # 主界面设置浮层
 ├── scripts/
