@@ -316,9 +316,7 @@ func _attract_to_cell(cell: Vector2i) -> void:
 	_show_attract_notice(true)
 	if not _will_respond():
 		_clear_attract_item()
-		if _bubble != null:
-			_bubble.position = character.position + Vector2(4.0, -54.0)
-			_bubble.show_bubble("？", 1.4)
+		_show_distract_fx()
 		status_label.text = "梅尔似乎没注意到…"
 		return
 	character.play_action("hop")
@@ -347,9 +345,7 @@ func _attract_to_furniture(furniture: Dictionary) -> void:
 	_show_attract_notice(true)
 	if not _will_respond():
 		_clear_attract_item()
-		if _bubble != null:
-			_bubble.position = character.position + Vector2(4.0, -54.0)
-			_bubble.show_bubble("？", 1.4)
+		_show_distract_fx()
 		status_label.text = "梅尔似乎没注意到…"
 		return
 	character.play_action("hop")
@@ -380,6 +376,13 @@ func _show_attract_notice(_respond: bool) -> void:
 	if _notify_fx != null:
 		_notify_fx.position = character.position + Vector2(-2.0, -60.0)
 		_notify_fx.play_effect(0.9)
+
+
+func _show_distract_fx() -> void:
+	## 走神：与「！」同款头顶特效，仅符号换成「？」并停留更久。
+	if _notify_fx != null:
+		_notify_fx.position = character.position + Vector2(-2.0, -60.0)
+		_notify_fx.play_effect(1.4, "？")
 
 
 func _cancel_pending_trigger() -> void:

@@ -12,7 +12,8 @@ func _ready() -> void:
 	pivot_offset = size / 2.0
 
 
-func play_effect(duration: float = 1.2) -> void:
+func play_effect(duration: float = 1.2, symbol: String = "！") -> void:
+	label.text = symbol
 	if _tween != null and _tween.is_valid():
 		_tween.kill()
 	visible = true
