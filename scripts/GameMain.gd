@@ -19,6 +19,17 @@ const BUBBLE_SCENE := preload("res://scenes/ui/bubble.tscn")
 const NOTIFY_FX_SCENE := preload("res://scenes/ui/notify_fx.tscn")
 const TOAST_SCENE := preload("res://scenes/ui/notification_toast.tscn")
 const NOTIFY_SOUND_PATH := "res://assets/sfx/notify.wav"
+
+## 预置吸引物：点击房间时放置，角色被吸引过去后消失。
+const ATTRACT_ITEMS := [
+	{"id": "heart", "name": "爱心"},
+	{"id": "fish", "name": "小鱼干"},
+	{"id": "apple", "name": "苹果"},
+	{"id": "star", "name": "星星"},
+	{"id": "ball", "name": "毛线球"},
+	{"id": "book", "name": "书卷"},
+]
+const ATTRACT_ITEM_DEFAULT := "random"
 const LAYOUT_PATH := "user://room_layout.json"
 
 ## 家具规格表（id / 显示名 / 交互名 / 功能说明 / 尺寸 / 默认位置 / 布置网格用颜色）
@@ -50,6 +61,8 @@ var _notify_fx: Control = null
 var _toast: Control = null
 var _notify_player: AudioStreamPlayer = null
 var _attract_seq := 0
+var _attract_item: Dictionary = {}   # {"spec": Dictionary, "cell": Vector2i}
+var _attract_item_bob := 0.0
 
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
@@ -106,7 +119,8 @@ func _ready() -> void:
 	character.move_to_cell(_target_cell)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_attract_item_bob += delta * 2.4
 	queue_redraw()
 
 
@@ -298,8 +312,10 @@ func _attract_to_cell(cell: Vector2i) -> void:
 	_cancel_pending_trigger()
 	character.stop_movement()
 	_target_cell = cell
+	_set_attract_item(cell)
 	_show_attract_notice(true)
 	if not _will_respond():
+		_clear_attract_item()
 		if _bubble != null:
 			_bubble.position = character.position + Vector2(4.0, -54.0)
 			_bubble.show_bubble("？", 1.4)
@@ -310,6 +326,9 @@ func _attract_to_cell(cell: Vector2i) -> void:
 	await get_tree().create_timer(ATTRACT_AFTER_DELAY).timeout
 	if seq != _attract_seq:
 		return
+	if cell == character.current_cell:
+		_clear_attract_item()
+		return
 	character.move_to_cell(cell)
 
 
@@ -318,9 +337,16 @@ func _attract_to_furniture(furniture: Dictionary) -> void:
 	var seq := _attract_seq
 	_cancel_pending_trigger()
 	character.stop_movement()
-	_target_cell = Vector2i(-1, -1)
+	var target := _find_nearest_free_cell_near_furniture(furniture["cells"])
+	if target.x < 0:
+		_show_attract_notice(true)
+		status_label.text = "附近没有可站立的位置"
+		return
+	_target_cell = target
+	_set_attract_item(target)
 	_show_attract_notice(true)
 	if not _will_respond():
+		_clear_attract_item()
 		if _bubble != null:
 			_bubble.position = character.position + Vector2(4.0, -54.0)
 			_bubble.show_bubble("？", 1.4)
@@ -332,14 +358,10 @@ func _attract_to_furniture(furniture: Dictionary) -> void:
 	if seq != _attract_seq:
 		return
 	if _is_adjacent_to_furniture(character.current_cell, furniture["cells"]):
+		_clear_attract_item()
 		character.trigger_interaction(furniture["interaction"])
 		return
-	var target := _find_nearest_free_cell_near_furniture(furniture["cells"])
-	if target.x < 0:
-		status_label.text = "附近没有可站立的位置"
-		return
 	_pending_trigger_interaction = furniture["interaction"]
-	_target_cell = target
 	character.move_to_cell(target)
 
 
@@ -362,6 +384,39 @@ func _show_attract_notice(_respond: bool) -> void:
 
 func _cancel_pending_trigger() -> void:
 	_pending_trigger_interaction = ""
+
+
+func _set_attract_item(cell: Vector2i) -> void:
+	## 按设置选择吸引物：random 或固定 id；放置在点击位置。
+	var mode := str(ConfigManager.get_value("general", "attract_item", ATTRACT_ITEM_DEFAULT))
+	var spec: Dictionary = {}
+	if mode == "random":
+		spec = ATTRACT_ITEMS[randi() % ATTRACT_ITEMS.size()]
+	else:
+		for item in ATTRACT_ITEMS:
+			if str(item["id"]) == mode:
+				spec = item
+				break
+	if spec.is_empty():
+		spec = ATTRACT_ITEMS[0]
+	_attract_item = {"spec": spec, "cell": cell}
+	queue_redraw()
+
+
+func _clear_attract_item() -> void:
+	if _attract_item.is_empty():
+		return
+	_attract_item = {}
+	queue_redraw()
+
+
+func _on_attract_arrived() -> void:
+	## 角色到达吸引物所在格：物品消失。
+	if _attract_item.is_empty():
+		return
+	var item_cell: Vector2i = _attract_item.get("cell", Vector2i(-1, -1))
+	if item_cell == character.current_cell:
+		_clear_attract_item()
 
 
 func _build_blocked_cells() -> Dictionary:
@@ -585,8 +640,7 @@ func _draw() -> void:
 	_draw_wall(room_size)
 	_draw_floor(room_size)
 	_draw_furniture()
-	_draw_target()
-	_draw_path()
+	_draw_attract_item()
 
 
 func _draw_wall(room_size: Vector2) -> void:
@@ -981,26 +1035,53 @@ func _draw_lamp() -> void:
 	)
 
 
-func _draw_target() -> void:
-	if _target_cell.x < 0:
+func _draw_attract_item() -> void:
+	if _attract_item.is_empty():
 		return
-	var center := _cell_center(_target_cell)
-	var color := Color(1.0, 0.78, 0.30, 0.85)
-	draw_line(center + Vector2(-5, 0), center + Vector2(5, 0), color, 2.0)
-	draw_line(center + Vector2(0, -5), center + Vector2(0, 5), color, 2.0)
-	draw_rect(Rect2(center - Vector2(6, 6), Vector2(12, 12)), color, false, 1.0)
-
-
-func _draw_path() -> void:
-	var path: Array = character.get_current_path()
-	if path.is_empty():
-		return
-	var points: Array = [character.position]
-	for cell in path:
-		points.append(_cell_center(cell))
-	for i in range(points.size() - 1):
-		draw_line(points[i], points[i + 1], Color(1.0, 0.78, 0.30, 0.65), 1.0)
-		draw_circle(points[i + 1], 2.0, Color(1.0, 0.78, 0.30, 0.85))
+	var spec: Dictionary = _attract_item["spec"]
+	var cell: Vector2i = _attract_item["cell"]
+	var center := _cell_center(cell) + Vector2(0.0, sin(_attract_item_bob) * 2.0)
+	var kind := str(spec["id"])
+	# 柔光底
+	draw_circle(center, 9.0, Color(1.0, 0.92, 0.65, 0.18))
+	match kind:
+		"heart":
+			draw_circle(center + Vector2(-3, -2), 3.0, Color(0.95, 0.45, 0.55))
+			draw_circle(center + Vector2(3, -2), 3.0, Color(0.95, 0.45, 0.55))
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(-5.5, -1),
+				center + Vector2(5.5, -1),
+				center + Vector2(0, 6),
+			]), Color(0.95, 0.45, 0.55))
+		"fish":
+			draw_circle(center + Vector2(-1, 0), 4.0, Color(0.55, 0.75, 0.95))
+			draw_colored_polygon(PackedVector2Array([
+				center + Vector2(2.5, -3.5),
+				center + Vector2(6, 0),
+				center + Vector2(2.5, 3.5),
+			]), Color(0.55, 0.75, 0.95))
+			draw_circle(center + Vector2(-3.5, -1.5), 0.8, Color(0.15, 0.2, 0.3))
+		"apple":
+			draw_circle(center + Vector2(0, 1), 4.5, Color(0.88, 0.36, 0.30))
+			draw_rect(Rect2(center + Vector2(-0.8, -6.0), Vector2(1.6, 2.5)), Color(0.42, 0.28, 0.18))
+			draw_rect(Rect2(center + Vector2(0.6, -6.2), Vector2(3.2, 1.6)), Color(0.45, 0.70, 0.35))
+		"star":
+			var pts := PackedVector2Array()
+			for i in range(10):
+				var angle := -PI / 2.0 + i * PI / 5.0
+				var r := 6.0 if i % 2 == 0 else 2.6
+				pts.append(center + Vector2(cos(angle), sin(angle)) * r)
+			draw_colored_polygon(pts, Color(1.0, 0.85, 0.35))
+		"ball":
+			draw_circle(center, 4.5, Color(0.85, 0.55, 0.70))
+			draw_arc(center, 4.5, 0.6, 2.4, 12, Color(1.0, 0.9, 0.9), 1.4)
+			draw_circle(center + Vector2(-1.4, -1.6), 1.1, Color(1.0, 0.95, 0.95))
+		"book":
+			draw_rect(Rect2(center + Vector2(-5, -5), Vector2(10, 10)), Color(0.92, 0.80, 0.58))
+			draw_rect(Rect2(center + Vector2(-5, -5), Vector2(2.5, 10)), Color(0.70, 0.50, 0.32))
+			draw_rect(Rect2(center + Vector2(-1, -4), Vector2(5, 1.2)), Color(0.50, 0.38, 0.25))
+			draw_rect(Rect2(center + Vector2(-1, -1.8), Vector2(5, 1.2)), Color(0.50, 0.38, 0.25))
+			draw_rect(Rect2(center + Vector2(-1, 0.4), Vector2(5, 1.2)), Color(0.50, 0.38, 0.25))
 
 
 func _cell_rect(cell: Vector2i, size: Vector2i) -> Rect2:
@@ -1027,6 +1108,7 @@ func _on_state_changed(state_name: String) -> void:
 	if state_name == "walk":
 		status_label.text = "角色正在走路…"
 		return
+	_on_attract_arrived()
 	if _pending_trigger_interaction != "":
 		var interaction_name := _pending_trigger_interaction
 		_pending_trigger_interaction = ""

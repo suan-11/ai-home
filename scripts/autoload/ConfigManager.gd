@@ -57,6 +57,7 @@ func _default_config() -> Dictionary:
 		"general": {
 			"owner_name": "主人",
 			"auto_save": true,
+			"attract_item": "random",
 		},
 		"display": {
 			"pixel_scale": 2,

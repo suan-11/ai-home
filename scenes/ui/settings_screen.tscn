@@ -109,6 +109,21 @@ offset_right = 220.0
 offset_bottom = 92.0
 text = "自动保存"
 
+[node name="AttractLabel" type="Label" parent="ContentArea/GeneralPanel"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 100.0
+offset_right = 260.0
+offset_bottom = 122.0
+text = "引导物品种类（点击房间时放置）"
+
+[node name="AttractOption" type="OptionButton" parent="ContentArea/GeneralPanel"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 124.0
+offset_right = 260.0
+offset_bottom = 150.0
+
 [node name="DisplayPanel" type="Control" parent="ContentArea"]
 layout_mode = 1
 anchors_preset = 15

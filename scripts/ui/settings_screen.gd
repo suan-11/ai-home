@@ -4,6 +4,7 @@ extends Control
 
 signal back_requested
 
+const GAME_MAIN_SCRIPT := preload("res://scripts/GameMain.gd")
 const TAB_GENERAL := "general"
 const TAB_DISPLAY := "display"
 const TAB_AUDIO := "audio"
@@ -22,6 +23,7 @@ var _current_tab := ""
 
 @onready var owner_edit: LineEdit = $ContentArea/GeneralPanel/OwnerEdit
 @onready var auto_save_check: CheckButton = $ContentArea/GeneralPanel/AutoSaveCheck
+@onready var attract_option: OptionButton = $ContentArea/GeneralPanel/AttractOption
 
 @onready var pixel_scale_check: CheckButton = $ContentArea/DisplayPanel/PixelScaleCheck
 @onready var fps_check: CheckButton = $ContentArea/DisplayPanel/FpsCheck
@@ -55,6 +57,7 @@ func _ready() -> void:
 func _load_values() -> void:
 	owner_edit.text = ConfigManager.get_value("general", "owner_name", "主人")
 	auto_save_check.button_pressed = ConfigManager.get_value("general", "auto_save", true)
+	_setup_attract_options()
 
 	pixel_scale_check.button_pressed = ConfigManager.get_value("display", "pixel_scale", 2) >= 2
 	fps_check.button_pressed = ConfigManager.get_value("display", "show_fps", false)
@@ -110,6 +113,25 @@ func _panel_for_tab(tab: String) -> Control:
 	return general_panel
 
 
+func _setup_attract_options() -> void:
+	## 引导物品种类：随机（默认）或固定某一种；数据源 GameMain.ATTRACT_ITEMS。
+	attract_option.clear()
+	attract_option.add_item("随机（多种混合）")
+	attract_option.set_item_metadata(0, "random")
+	var items: Array = GAME_MAIN_SCRIPT.ATTRACT_ITEMS
+	for i in range(items.size()):
+		var item: Dictionary = items[i]
+		attract_option.add_item(str(item["name"]))
+		attract_option.set_item_metadata(i + 1, str(item["id"]))
+	var current := str(ConfigManager.get_value("general", "attract_item", "random"))
+	var idx := 0
+	for i in range(attract_option.item_count):
+		if str(attract_option.get_item_metadata(i)) == current:
+			idx = i
+			break
+	attract_option.selected = idx
+
+
 func _on_tab_pressed(tab: String) -> void:
 	_show_tab(tab)
 
@@ -125,6 +147,7 @@ func _update_temp_value() -> void:
 func _on_save_pressed() -> void:
 	ConfigManager.set_value("general", "owner_name", owner_edit.text)
 	ConfigManager.set_value("general", "auto_save", auto_save_check.button_pressed)
+	ConfigManager.set_value("general", "attract_item", attract_option.get_item_metadata(attract_option.selected))
 	ConfigManager.set_value("display", "pixel_scale", 2 if pixel_scale_check.button_pressed else 1)
 	ConfigManager.set_value("display", "show_fps", fps_check.button_pressed)
 	ConfigManager.set_value("display", "start_fullscreen", fullscreen_check.button_pressed)
