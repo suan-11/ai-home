@@ -123,6 +123,30 @@ func register_interaction(char_id: String, interaction_name: String) -> bool:
 	return applied > 0
 
 
+## ---------------- 数据驱动互动使用记录（每日次数 / 冷却） ----------------
+
+
+func get_interaction_usage(char_id: String, interaction_id: String) -> Dictionary:
+	var char_data := _get_char(char_id)
+	var usage: Dictionary = char_data.get("usage", {})
+	var rec: Dictionary = usage.get(interaction_id, {})
+	return rec
+
+
+func record_interaction_usage(char_id: String, interaction_id: String) -> void:
+	var char_data := _get_char(char_id)
+	var usage: Dictionary = char_data.get("usage", {})
+	var date := today()
+	var rec: Dictionary = usage.get(interaction_id, {})
+	if str(rec.get("date", "")) != date:
+		rec = {"date": date, "count": 0, "last": 0.0}
+	rec["count"] = int(rec.get("count", 0)) + 1
+	rec["last"] = Time.get_unix_time_from_system()
+	usage[interaction_id] = rec
+	char_data["usage"] = usage
+	_save()
+
+
 func on_game_finished(char_id: String, result: String) -> int:
 	var delta := 0
 	var reason := ""
@@ -150,6 +174,7 @@ func _get_char(char_id: String) -> Dictionary:
 			"affection": DEFAULT_AFFECTION,
 			"daily": {},
 			"interactions": {},
+			"usage": {},
 		}
 		_save()
 	return chars[char_id]

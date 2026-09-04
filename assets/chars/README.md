@@ -5,6 +5,8 @@
 ```
 assets/chars/char_03/
 ├── persona.json          # 人设（唯一格式来源：系统提示词、性格、语言协议等）
+├── interactions.json     # 互动配置（文本/动作/表情/效果/上限，数据驱动，见下）
+├── portraits/            # 立绘差分表情（default/happy/low/shy/distracted/surprised 等）
 ├── portrait.png          # 左侧立绘原图（保持原始分辨率，直接按比例缩放）
 ├── anim_map.json         # 动画状态 → 帧数/帧率/是否循环
 ├── Mea人设.md            # （可选）人设原始文稿，保留来源
@@ -16,6 +18,23 @@ assets/chars/char_03/
     ├── walk_1.png
     ├── walk_2.png
     └── walk_3.png
+```
+
+## interactions.json（每个角色可自定义互动）
+
+键为互动 id，值包含：`name`（显示名）、`entry`（入口，`character`=点击角色菜单；`furniture:<交互名>`=家具交互）、`actions`（wave/hop/sad）、`expression`（立绘表情，见 portraits/）、`texts`（随机台词）、`effects`（satiety/mood/fatigue）、`affection`（amount/reason）、`limits`（daily 每日次数 / cooldown 秒）。
+
+```json
+{
+  "pet": {
+    "name": "摸摸头", "entry": "character",
+    "actions": ["hop"], "expression": "shy", "expression_duration": 2.5,
+    "texts": ["手拿开喵。"], "reply_delay": 0.6,
+    "effects": {"mood": 3},
+    "affection": {"amount": 1, "reason": "摸摸头"},
+    "limits": {"daily": 5}
+  }
+}
 ```
 
 ## persona.json 字段

@@ -73,6 +73,9 @@ var _autonomy_wait := 0.0            # 两次自主动作之间的等待
 var _autonomy_elapsed := 0.0
 var _autonomy_playing_computer := false
 var _last_autonomy_type := ""
+var _interaction_specs: Dictionary = {}
+var _interaction_menu: Panel = null
+var _interaction_running := false
 
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
@@ -106,6 +109,8 @@ func _ready() -> void:
 	_phone_overlay.notification_triggered.connect(_on_phone_notification)
 	_phone_overlay.player_activity.connect(_mark_player_activity)
 	play_together_button.pressed.connect(_on_play_together_pressed)
+	_interaction_specs = CharacterInteractions.load_specs(GameManager.CURRENT_CHAR_ID)
+	_build_interaction_menu()
 
 	_bubble = BUBBLE_SCENE.instantiate()
 	$UI.add_child(_bubble)
@@ -161,6 +166,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			var cell := _pixel_to_cell(event.position)
 			if not _inside_grid(cell):
 				return
+			if cell == character.current_cell:
+				# 点击角色：打开/关闭数据驱动互动菜单
+				if _interaction_menu != null and _interaction_menu.visible:
+					_close_interaction_menu()
+				else:
+					_open_character_interaction_menu()
+				return
+			if _interaction_menu != null and _interaction_menu.visible:
+				_close_interaction_menu()
 			var furniture := _get_furniture_at(cell)
 			if not furniture.is_empty():
 				_handle_furniture_click(furniture)
@@ -308,10 +322,6 @@ func _toggle_fullscreen() -> void:
 
 func _on_character_interaction(interaction_name: String) -> void:
 	var char_id := GameManager.CURRENT_CHAR_ID
-	MemoryManager.record_daily_event(char_id, "interaction", interaction_name)
-	# 看完电视/看书后短暂开心（立绘差分）
-	if interaction_name in ["watch", "read"]:
-		portrait_manager.set_expression("happy", 8.0)
 	if interaction_name == "computer":
 		_open_computer_panel()
 		return
@@ -319,6 +329,15 @@ func _on_character_interaction(interaction_name: String) -> void:
 		# 布置台：弹出自定义界面；不加好感度（与其它家具交互不同）
 		_open_layout_overlay()
 		return
+	# 数据驱动互动（角色文件）：按 entry 匹配家具交互，优先于通用注册
+	for key in _interaction_specs:
+		var spec: Dictionary = _interaction_specs[key]
+		if str(spec.get("entry", "")) == "furniture:" + interaction_name:
+			_run_interaction(key)
+			return
+	# 看完电视后短暂开心（立绘差分；看书由角色文件互动处理）
+	if interaction_name == "watch":
+		portrait_manager.set_expression("happy", 8.0)
 	match interaction_name:
 		"fridge":
 			_take_food()
@@ -334,6 +353,7 @@ func _on_character_interaction(interaction_name: String) -> void:
 			if StatusManager.get_food() != "none":
 				_eat_food()
 				return
+	MemoryManager.record_daily_event(char_id, "interaction", interaction_name)
 	var added := GameManager.register_interaction(char_id, interaction_name)
 	if added:
 		status_label.text = "触发交互：%s（好感 +1）" % interaction_name
@@ -386,6 +406,125 @@ func _on_computer_panel_closed() -> void:
 
 func _handle_furniture_click(furniture: Dictionary) -> void:
 	_attract_to_furniture(furniture)
+
+
+## ---------------- P3 其他互动（角色文件数据驱动） ----------------
+
+func _build_interaction_menu() -> void:
+	var panel := Panel.new()
+	panel.size = Vector2(190, 42 + (4) * 34)  # 上限：角色入口最多显示 3 项 + 标题 + 关闭
+	panel.position = Vector2(150, 84)
+	panel.visible = false
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.z_index = 30
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	box.add_theme_constant_override("separation", 4)
+	panel.add_child(box)
+	var title := Label.new()
+	title.text = "想和梅尔做什么？"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	for id in _interaction_specs.keys():
+		var spec: Dictionary = _interaction_specs[id]
+		if str(spec.get("entry", "")) != "character":
+			continue
+		var btn := Button.new()
+		btn.text = str(spec.get("name", id))
+		btn.pressed.connect(_on_interaction_menu_choice.bind(id))
+		box.add_child(btn)
+	var close := Button.new()
+	close.text = "关闭"
+	close.pressed.connect(_close_interaction_menu)
+	box.add_child(close)
+	$UI.add_child(panel)
+	_interaction_menu = panel
+
+
+func _open_character_interaction_menu() -> void:
+	_mark_player_activity()
+	if _interaction_menu != null:
+		_interaction_menu.visible = true
+		status_label.text = "想做点什么？"
+
+
+func _close_interaction_menu() -> void:
+	if _interaction_menu != null:
+		_interaction_menu.visible = false
+
+
+func _on_interaction_menu_choice(spec_id: String) -> void:
+	_close_interaction_menu()
+	_run_interaction(spec_id)
+
+
+## 执行角色文件中的互动：上限检查 → 效果/好感 → 动作/表情 → 台词气泡。
+func _run_interaction(spec_id: String) -> void:
+	if _interaction_running:
+		return
+	var spec: Dictionary = _interaction_specs.get(spec_id, {})
+	if spec.is_empty():
+		return
+	var char_id := GameManager.CURRENT_CHAR_ID
+
+	# 上限检查（每日次数 / 冷却）
+	var limits: Dictionary = spec.get("limits", {})
+	var usage := GameManager.get_interaction_usage(char_id, spec_id)
+	if limits.has("daily"):
+		var date := str(usage.get("date", ""))
+		var count := int(usage.get("count", 0))
+		if date == GameManager.today() and count >= int(limits["daily"]):
+			status_label.text = "今天已经 %d 次啦，改天吧" % count
+			return
+	if limits.has("cooldown"):
+		var last := float(usage.get("last", 0.0))
+		var cd := float(limits["cooldown"])
+		var elapsed := Time.get_unix_time_from_system() - last
+		if last > 0.0 and elapsed < cd:
+			status_label.text = "刚玩过，等 %d 秒吧" % int(cd - elapsed)
+			return
+	GameManager.record_interaction_usage(char_id, spec_id)
+	_interaction_running = true
+
+	# 状态效果
+	var effects: Dictionary = spec.get("effects", {})
+	StatusManager.apply_delta(
+		int(effects.get("satiety", 0)),
+		int(effects.get("mood", 0)),
+		int(effects.get("fatigue", 0))
+	)
+
+	# 好感
+	var aff_text := ""
+	var aff: Dictionary = spec.get("affection", {})
+	var aff_amount := int(aff.get("amount", 0))
+	if aff_amount > 0:
+		var applied := GameManager.add_affection(
+			char_id, aff_amount, str(aff.get("reason", spec_id)), "interaction"
+		)
+		if applied > 0:
+			aff_text = "（好感 +%d）" % applied
+
+	# 记录日记
+	MemoryManager.record_daily_event(char_id, "interaction", spec_id)
+
+	# 动作与立绘
+	for action in spec.get("actions", []):
+		character.play_action(str(action))
+	var expression := str(spec.get("expression", ""))
+	if not expression.is_empty():
+		portrait_manager.set_expression(expression, float(spec.get("expression_duration", 2.0)))
+
+	# 台词气泡（延迟一小会再说话）
+	var reply_delay := float(spec.get("reply_delay", 0.6))
+	if reply_delay > 0.0:
+		await get_tree().create_timer(reply_delay).timeout
+	var texts: Array = spec.get("texts", [])
+	if not texts.is_empty():
+		_bubble_show(str(texts[randi_range(0, texts.size() - 1)]), 3.0)
+
+	status_label.text = "%s %s" % [str(spec.get("name", spec_id)), aff_text]
+	_interaction_running = false
 
 
 ## ---------------- P1 吸引移动（点击引导 + 主动靠近） ----------------

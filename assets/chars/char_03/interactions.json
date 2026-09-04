@@ -1,0 +1,62 @@
+{
+  "pet": {
+    "name": "摸摸头",
+    "entry": "character",
+    "actions": ["hop"],
+    "expression": "shy",
+    "expression_duration": 2.5,
+    "texts": ["手拿开喵。", "……随主人。", "别碰耳朵，不然挠你。"],
+    "reply_delay": 0.6,
+    "effects": {"mood": 3},
+    "affection": {"amount": 1, "reason": "摸摸头"},
+    "limits": {"daily": 5}
+  },
+  "feed_snack": {
+    "name": "投喂零食",
+    "entry": "character",
+    "actions": ["hop"],
+    "expression": "happy",
+    "expression_duration": 3.0,
+    "texts": ["……勉强收下。", "给主人面子，喵。", "还有吗。"],
+    "reply_delay": 0.6,
+    "effects": {"satiety": 10, "mood": 1},
+    "affection": {"amount": 0, "reason": "投喂零食"},
+    "limits": {"daily": 3}
+  },
+  "play_toy": {
+    "name": "玩小玩具",
+    "entry": "character",
+    "actions": ["hop"],
+    "expression": "happy",
+    "expression_duration": 3.0,
+    "texts": ["陪主人玩一小会喵。", "……就一下。"],
+    "reply_delay": 0.6,
+    "effects": {"mood": 3, "fatigue": 2},
+    "affection": {"amount": 0, "reason": "玩小玩具"},
+    "limits": {"cooldown": 60}
+  },
+  "read_together": {
+    "name": "一起看书",
+    "entry": "furniture:read",
+    "actions": ["wave"],
+    "expression": "happy",
+    "expression_duration": 8.0,
+    "texts": ["安静看，喵。", "……坐好。", "这本书还行。"],
+    "reply_delay": 0.8,
+    "effects": {"mood": 2, "fatigue": 1},
+    "affection": {"amount": 0, "reason": "一起看书"},
+    "limits": {"daily": 3}
+  },
+  "water_plant": {
+    "name": "浇花",
+    "entry": "furniture:water",
+    "actions": ["wave"],
+    "expression": "happy",
+    "expression_duration": 3.0,
+    "texts": ["花要好好养，喵。", "绿油油的，心情不错。"],
+    "reply_delay": 0.6,
+    "effects": {"mood": 1},
+    "affection": {"amount": 1, "reason": "浇花"},
+    "limits": {"daily": 1}
+  }
+}
