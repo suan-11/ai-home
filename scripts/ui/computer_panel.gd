@@ -21,6 +21,7 @@ const SCREEN_GAMES := "games"
 const SCREEN_GOMOKU := "gomoku"
 const SCREEN_GRAPHWAR := "graphwar"
 const SCREEN_TICTACTOE := "tictactoe"
+const SCREEN_BLACKJACK := "blackjack"
 const SCREEN_SETTINGS := "settings"
 const SCREEN_CHAT := "chat"
 const SCREEN_DIARY := "diary"
@@ -30,6 +31,7 @@ const GAME_SELECT_SCENE := preload("res://scenes/ui/game_select.tscn")
 const GOMOKU_SCENE := preload("res://scenes/ui/gomoku_game.tscn")
 const GRAPHWAR_SCENE := preload("res://scenes/ui/graphwar_game.tscn")
 const TICTACTOE_SCENE := preload("res://scenes/ui/tictactoe_game.tscn")
+const BLACKJACK_SCENE := preload("res://scenes/ui/blackjack_game.tscn")
 const SETTINGS_SCENE := preload("res://scenes/ui/settings_screen.tscn")
 const CHAT_SCENE := preload("res://scenes/ui/chat_screen.tscn")
 const DIARY_SCENE := preload("res://scenes/ui/diary_screen.tscn")
@@ -109,6 +111,10 @@ func open_tictactoe(transition: int = Transition.SLIDE_LEFT) -> void:
 	_open_screen(SCREEN_TICTACTOE, TICTACTOE_SCENE, transition, true)
 
 
+func open_blackjack(transition: int = Transition.SLIDE_LEFT) -> void:
+	_open_screen(SCREEN_BLACKJACK, BLACKJACK_SCENE, transition, true)
+
+
 func open_settings(transition: int = Transition.SLIDE_LEFT) -> void:
 	_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, true)
 
@@ -136,6 +142,8 @@ func go_back(transition: int = Transition.SLIDE_RIGHT) -> void:
 			_open_screen(SCREEN_GRAPHWAR, GRAPHWAR_SCENE, transition, false)
 		SCREEN_TICTACTOE:
 			_open_screen(SCREEN_TICTACTOE, TICTACTOE_SCENE, transition, false)
+		SCREEN_BLACKJACK:
+			_open_screen(SCREEN_BLACKJACK, BLACKJACK_SCENE, transition, false)
 		SCREEN_SETTINGS:
 			_open_screen(SCREEN_SETTINGS, SETTINGS_SCENE, transition, false)
 		SCREEN_CHAT:
@@ -200,12 +208,15 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 			screen.gomoku_requested.connect(open_gomoku)
 			screen.graphwar_requested.connect(open_graphwar)
 			screen.tictactoe_requested.connect(open_tictactoe)
+			screen.blackjack_requested.connect(open_blackjack)
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_GOMOKU:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_GRAPHWAR:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_TICTACTOE:
+			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
+		SCREEN_BLACKJACK:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_SETTINGS:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))

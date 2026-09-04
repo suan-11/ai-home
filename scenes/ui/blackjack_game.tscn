@@ -1,0 +1,132 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/blackjack_game.gd" id="1_game"]
+
+[node name="BlackjackGame" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+script = ExtResource("1_game")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 10.0
+offset_right = -120.0
+offset_bottom = 32.0
+text = "21点"
+horizontal_alignment = 0
+
+[node name="StatusLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 36.0
+offset_right = 300.0
+offset_bottom = 56.0
+text = "你的回合：要牌或停牌"
+horizontal_alignment = 0
+
+[node name="PlayerLabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 64.0
+offset_right = 300.0
+offset_bottom = 86.0
+text = "你的手牌"
+horizontal_alignment = 0
+
+[node name="AILabel" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 184.0
+offset_right = 300.0
+offset_bottom = 206.0
+text = "AI 的手牌"
+horizontal_alignment = 0
+
+[node name="HitButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 306.0
+offset_top = 36.0
+offset_right = 426.0
+offset_bottom = 64.0
+text = "要牌"
+
+[node name="StandButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 306.0
+offset_top = 70.0
+offset_right = 426.0
+offset_bottom = 98.0
+text = "停牌"
+
+[node name="RestartButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 306.0
+offset_top = 104.0
+offset_right = 426.0
+offset_bottom = 132.0
+text = "重新开始"
+
+[node name="BackButton" type="Button" parent="."]
+layout_mode = 0
+offset_left = 306.0
+offset_top = 138.0
+offset_right = 426.0
+offset_bottom = 166.0
+text = "退出"
+
+[node name="ResultPanel" type="Panel" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -130.0
+offset_top = -76.0
+offset_right = 130.0
+offset_bottom = 76.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 0
+
+[node name="ResultLabel" type="Label" parent="ResultPanel"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = 44.0
+text = "结果"
+horizontal_alignment = 1
+
+[node name="RestartResultButton" type="Button" parent="ResultPanel"]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 52.0
+offset_right = 228.0
+offset_bottom = 84.0
+text = "再来一局"
+
+[node name="ExitResultButton" type="Button" parent="ResultPanel"]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 94.0
+offset_right = 228.0
+offset_bottom = 126.0
+text = "退出"
