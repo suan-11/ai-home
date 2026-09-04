@@ -77,6 +77,12 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "21点"
 
+[node name="SnakeButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "贪吃蛇"
+
 [node name="FutureButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2

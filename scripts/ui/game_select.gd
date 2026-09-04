@@ -7,6 +7,7 @@ signal gomoku_requested
 signal graphwar_requested
 signal tictactoe_requested
 signal blackjack_requested
+signal snake_requested
 
 @onready var status_label: Label = $WindowPanel/StatusLabel
 
@@ -16,6 +17,7 @@ func _ready() -> void:
 	$WindowPanel/ScrollContainer/GameList/GraphwarButton.pressed.connect(_on_graphwar_pressed)
 	$WindowPanel/ScrollContainer/GameList/TictactoeButton.pressed.connect(_on_tictactoe_pressed)
 	$WindowPanel/ScrollContainer/GameList/BlackjackButton.pressed.connect(_on_blackjack_pressed)
+	$WindowPanel/ScrollContainer/GameList/SnakeButton.pressed.connect(_on_snake_pressed)
 	$WindowPanel/ScrollContainer/GameList/FutureButton.pressed.connect(_on_future_pressed)
 	$WindowPanel/ScrollContainer/GameList/BackButton.pressed.connect(_on_back_pressed)
 
@@ -38,6 +40,11 @@ func _on_tictactoe_pressed() -> void:
 func _on_blackjack_pressed() -> void:
 	status_label.text = "正在进入 21点…"
 	blackjack_requested.emit()
+
+
+func _on_snake_pressed() -> void:
+	status_label.text = "正在进入贪吃蛇…"
+	snake_requested.emit()
 
 
 func _on_future_pressed() -> void:
