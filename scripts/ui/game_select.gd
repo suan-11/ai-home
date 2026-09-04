@@ -12,12 +12,12 @@ signal blackjack_requested
 
 
 func _ready() -> void:
-	$WindowPanel/GomokuButton.pressed.connect(_on_gomoku_pressed)
-	$WindowPanel/GraphwarButton.pressed.connect(_on_graphwar_pressed)
-	$WindowPanel/TictactoeButton.pressed.connect(_on_tictactoe_pressed)
-	$WindowPanel/BlackjackButton.pressed.connect(_on_blackjack_pressed)
-	$WindowPanel/FutureButton.pressed.connect(_on_future_pressed)
-	$WindowPanel/BackButton.pressed.connect(_on_back_pressed)
+	$WindowPanel/ScrollContainer/GameList/GomokuButton.pressed.connect(_on_gomoku_pressed)
+	$WindowPanel/ScrollContainer/GameList/GraphwarButton.pressed.connect(_on_graphwar_pressed)
+	$WindowPanel/ScrollContainer/GameList/TictactoeButton.pressed.connect(_on_tictactoe_pressed)
+	$WindowPanel/ScrollContainer/GameList/BlackjackButton.pressed.connect(_on_blackjack_pressed)
+	$WindowPanel/ScrollContainer/GameList/FutureButton.pressed.connect(_on_future_pressed)
+	$WindowPanel/ScrollContainer/GameList/BackButton.pressed.connect(_on_back_pressed)
 
 
 func _on_gomoku_pressed() -> void:
