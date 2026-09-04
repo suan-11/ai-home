@@ -77,6 +77,7 @@ var _last_autonomy_type := ""
 @onready var character: CharacterBody2D = $Room/Character
 @onready var status_label: Label = $UI/StatusLabel
 @onready var play_together_button: Button = $UI/PlayTogetherButton
+@onready var portrait_manager = $UI/PortraitLayer/PortraitTexture
 
 
 func _ready() -> void:
@@ -199,11 +200,21 @@ func _on_phone_overlay_closed() -> void:
 	status_label.text = "手机已收起"
 
 
-func _on_phone_reaction(text: String, _emotion: String) -> void:
+func _on_phone_reaction(text: String, emotion: String) -> void:
 	_play_notify_sound()
 	if _bubble != null:
 		_bubble.position = character.position + Vector2(4.0, -54.0)
 		_bubble.show_bubble(text, 3.0)
+	# 情绪 → 立绘差分（临时表情）
+	match emotion:
+		"happy", "praise":
+			portrait_manager.set_expression("happy", 2.5)
+		"shy":
+			portrait_manager.set_expression("shy", 2.5)
+		"surprised":
+			portrait_manager.set_expression("surprised", 2.5)
+		"sad":
+			portrait_manager.set_expression("low", 2.5)
 
 
 func _on_phone_notification() -> void:
@@ -216,6 +227,7 @@ func _on_phone_notification() -> void:
 		_toast.position = Vector2(292.0, 42.0)
 		_toast.show_toast()
 	status_label.text = "梅尔收到了新消息！"
+	portrait_manager.set_expression("surprised", 1.5)
 
 
 func _on_phone_action(action_name: String) -> void:
@@ -297,6 +309,9 @@ func _toggle_fullscreen() -> void:
 func _on_character_interaction(interaction_name: String) -> void:
 	var char_id := GameManager.CURRENT_CHAR_ID
 	MemoryManager.record_daily_event(char_id, "interaction", interaction_name)
+	# 看完电视/看书后短暂开心（立绘差分）
+	if interaction_name in ["watch", "read"]:
+		portrait_manager.set_expression("happy", 8.0)
 	if interaction_name == "computer":
 		_open_computer_panel()
 		return
@@ -459,6 +474,7 @@ func _show_distract_fx() -> void:
 	if _notify_fx != null:
 		_notify_fx.position = character.position + Vector2(-2.0, -60.0)
 		_notify_fx.play_effect(1.4, "？")
+	portrait_manager.set_expression("distracted", 2.5)
 
 
 func _cancel_pending_trigger() -> void:
@@ -802,12 +818,13 @@ func _run_offline_ai_settlement(seconds: float) -> void:
 	var context: Array = MemoryManager.build_chat_context(char_id, persona)
 	var hours := int(seconds / 3600.0)
 	var mins := int(seconds / 60.0) % 60
-	var instruction := "主人在过去约%d小时%d分钟后回来陪你了（你独自生活了这么久）。" \
-		+ "请以梅尔的身份，结合人设、记忆和当前状态：%s。\n只输出一个 JSON 对象（不要其他文字、不要 Markdown 代码块）：" \
-		+ "{\"satiety\":-10,\"fatigue\":10,\"mood\":5,\"affection\":0或1,\"message\":\"20字以内想对主人说的话\"}。\n" \
-		+ "说明：satiety/fatigue 的自然变化已按离线时长先算过一次，这里输出这段经历带来的额外修正（整数，-10~+10）；" \
-		+ "mood 由独立生活的经历决定（整数，-15~+15）；affection=1 表示因为想念主人而好感+1（当天好感最多+3）。" \
-		% [hours, mins, StatusManager.get_state_summary()]
+	var instruction := (
+		"主人在过去约%d小时%d分钟后回来陪你了（你独自生活了这么久）。"
+		+ "请以梅尔的身份，结合人设、记忆和当前状态：%s。\n只输出一个 JSON 对象（不要其他文字、不要 Markdown 代码块）："
+		+ "{\"satiety\":-10,\"fatigue\":10,\"mood\":5,\"affection\":0或1,\"message\":\"20字以内想对主人说的话\"}。\n"
+		+ "说明：satiety/fatigue 的自然变化已按离线时长先算过一次，这里输出这段经历带来的额外修正（整数，-10~+10）；"
+		+ "mood 由独立生活的经历决定（整数，-15~+15）；affection=1 表示因为想念主人而好感+1（当天好感最多+3）。"
+	) % [hours, mins, StatusManager.get_state_summary()]
 	context.append({"role": "user", "content": instruction})
 	AIConnector.request_json(context, _on_offline_settled, _on_offline_settle_error)
 
