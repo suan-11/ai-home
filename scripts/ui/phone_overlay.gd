@@ -16,6 +16,7 @@ const REPLY_DELAY := 0.8     # 通知后，AI 开始回复的延迟
 const HINT_DURATION := 1.1   # 每行系统提示停留时长
 
 var _char_id := CHAR_ID
+var _char_name := "梅尔"
 var _messages: Array = []
 var _waiting := false
 var _is_open := false
@@ -31,8 +32,10 @@ var _hint_base_pos: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	_char_id = GameManager.CURRENT_CHAR_ID
+	_char_id = GameManager.get_current_char_id()
+	_char_name = CharacterCatalog.get_display_name(_char_id)
 	_hint_base_pos = hint_label.position
+	$Panel/TitleLabel.text = "%s · 手机" % _char_name
 	var system_prompt := MemoryManager.get_persona_system(_char_id)
 	_messages = MemoryManager.build_chat_context(_char_id, system_prompt)
 	_show_history()
@@ -62,10 +65,10 @@ func close_overlay() -> void:
 func _show_history() -> void:
 	var history := MemoryManager.get_short_term(_char_id)
 	if history.is_empty():
-		_append_message("梅尔", "数据呢喵。发消息说正事喵。")
+		_append_message(_char_name, "数据呢。发消息说正事。")
 		return
 	for entry in history:
-		var who := "主人" if str(entry["role"]) == "user" else "梅尔"
+		var who := "主人" if str(entry["role"]) == "user" else _char_name
 		_append_message(who, str(entry["content"]))
 
 
@@ -88,7 +91,7 @@ func _on_send_pressed() -> void:
 	# 1) 延迟：角色“收到消息”
 	await get_tree().create_timer(RECEIVE_DELAY).timeout
 	notification_triggered.emit()
-	_enqueue_hint("梅尔收到了消息！")
+	_enqueue_hint("%s收到了消息！" % _char_name)
 
 	# 2) 小停顿后开始回复（触发 AI 结构化返回）
 	await get_tree().create_timer(REPLY_DELAY).timeout
@@ -123,7 +126,7 @@ func _on_ai_reply(data: Dictionary) -> void:
 	_messages.append({"role": "assistant", "content": reply})
 	MemoryManager.record_chat(_char_id, "assistant", reply)
 	MemoryManager.maybe_summarize(_char_id)
-	_append_message("梅尔", reply)
+	_append_message(_char_name, reply)
 	reaction.emit(reply, emotion)
 	action_requested.emit(action)
 	StatusManager.apply_delta(0, _parse_mood_delta(data), 0)

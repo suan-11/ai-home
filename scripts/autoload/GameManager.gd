@@ -3,11 +3,15 @@ extends Node
 ## 数据保存到 user://game.json。
 
 signal affection_changed(char_id: String, value: int, reason: String)
+signal current_char_changed(char_id: String)
 
 const GAME_PATH := "user://game.json"
 const CHAT_DAILY_CAP := 10
 const DEFAULT_AFFECTION := 50
-const CURRENT_CHAR_ID := "char_03"
+const DEFAULT_CHAR_ID := "char_03"
+
+## 当前角色 id（保留原名以兼容旧引用；统一用 get_current_char_id() 读取）。
+var CURRENT_CHAR_ID: String = DEFAULT_CHAR_ID
 
 var _game: Dictionary = {}
 
@@ -25,6 +29,8 @@ func _load() -> void:
 			var parsed = JSON.parse_string(text)
 			if parsed is Dictionary:
 				_game = parsed
+				var saved := str(_game.get("current_char_id", DEFAULT_CHAR_ID))
+				CURRENT_CHAR_ID = saved if CharacterCatalog.is_available(saved) else DEFAULT_CHAR_ID
 				return
 	_game = {}
 	_save()
@@ -35,6 +41,26 @@ func _save() -> void:
 	if file != null:
 		file.store_string(JSON.stringify(_game, "\t"))
 		file.close()
+
+
+## ---------------- 当前角色（多角色切换） ----------------
+
+
+func get_current_char_id() -> String:
+	return CURRENT_CHAR_ID
+
+
+## 切换当前角色：校验可用性、持久化并广播信号。
+func set_current_char_id(char_id: String) -> bool:
+	if not CharacterCatalog.is_available(char_id):
+		return false
+	if char_id == CURRENT_CHAR_ID:
+		return true
+	CURRENT_CHAR_ID = char_id
+	_game["current_char_id"] = char_id
+	_save()
+	current_char_changed.emit(char_id)
+	return true
 
 
 func today() -> String:

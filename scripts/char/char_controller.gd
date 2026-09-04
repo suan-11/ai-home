@@ -8,8 +8,9 @@ signal interaction_triggered(interaction_name: String)
 const SPEED := 80.0  # 像素/秒
 const CELL_SIZE := 16
 const CELL_CENTER_OFFSET := Vector2(8, 8)
-const CHAR_ID := "char_03"
-const CHAR_SPRITE_PATH := "res://assets/chars/%s/sprites" % CHAR_ID
+const DEFAULT_CHAR_ID := "char_03"
+
+var char_id: String = DEFAULT_CHAR_ID
 
 var grid_size: Vector2i = Vector2i(16, 12)
 var grid_origin: Vector2 = Vector2.ZERO
@@ -31,6 +32,18 @@ func _ready() -> void:
 	_sprite.scale = Vector2(0.25, 0.25)
 	current_cell = _pixel_to_cell(position)
 	_sprite.play("idle")
+
+
+## 多角色切换：重新加载该角色的 sprite 帧并回到待机。
+func set_character(new_char_id: String) -> void:
+	if new_char_id.is_empty() or new_char_id == char_id:
+		return
+	char_id = new_char_id
+	_setup_animations()
+	_kill_action_tween()
+	stop_movement()
+	_sprite.play("idle")
+	state_changed.emit("idle")
 
 
 func set_blocked_cells(blocked: Dictionary) -> void:
@@ -159,28 +172,43 @@ func _physics_process(delta: float) -> void:
 
 func _setup_animations() -> void:
 	var frames := SpriteFrames.new()
+	var base := "res://assets/chars/%s/sprites" % char_id
 
-	var idle_0: Texture2D = load(CHAR_SPRITE_PATH + "/idle_0.png")
-	var idle_1: Texture2D = load(CHAR_SPRITE_PATH + "/idle_1.png")
-	frames.add_animation("idle")
-	frames.add_frame("idle", idle_0)
-	frames.add_frame("idle", idle_1)
-	frames.set_animation_speed("idle", 4.0)
-	frames.set_animation_loop("idle", true)
+	var idle_frames: Array[Texture2D] = []
+	for i in range(2):
+		var tex := _try_load("%s/idle_%d.png" % [base, i])
+		if tex != null:
+			idle_frames.append(tex)
+	if not idle_frames.is_empty():
+		frames.add_animation("idle")
+		for tex in idle_frames:
+			frames.add_frame("idle", tex)
+		frames.set_animation_speed("idle", 4.0)
+		frames.set_animation_loop("idle", true)
 
-	var walk_0: Texture2D = load(CHAR_SPRITE_PATH + "/walk_0.png")
-	var walk_1: Texture2D = load(CHAR_SPRITE_PATH + "/walk_1.png")
-	var walk_2: Texture2D = load(CHAR_SPRITE_PATH + "/walk_2.png")
-	var walk_3: Texture2D = load(CHAR_SPRITE_PATH + "/walk_3.png")
-	frames.add_animation("walk")
-	frames.add_frame("walk", walk_0)
-	frames.add_frame("walk", walk_1)
-	frames.add_frame("walk", walk_2)
-	frames.add_frame("walk", walk_3)
-	frames.set_animation_speed("walk", 8.0)
-	frames.set_animation_loop("walk", true)
+	var walk_frames: Array[Texture2D] = []
+	for i in range(4):
+		var tex := _try_load("%s/walk_%d.png" % [base, i])
+		if tex != null:
+			walk_frames.append(tex)
+	if not walk_frames.is_empty():
+		frames.add_animation("walk")
+		for tex in walk_frames:
+			frames.add_frame("walk", tex)
+		frames.set_animation_speed("walk", 8.0)
+		frames.set_animation_loop("walk", true)
 
+	# 兜底：一个帧都没有时保留旧帧，避免 play 空动画报错。
+	if frames.get_animation_names().is_empty():
+		return
 	_sprite.sprite_frames = frames
+
+
+func _try_load(path: String) -> Texture2D:
+	if not ResourceLoader.exists(path):
+		return null
+	var tex: Texture2D = load(path)
+	return tex if tex != null else null
 
 
 func _cell_to_pixel(cell: Vector2i) -> Vector2:

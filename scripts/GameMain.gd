@@ -15,6 +15,7 @@ const SETTINGS_OVERLAY_SCENE := preload("res://scenes/ui/main_settings_overlay.t
 const LAYOUT_OVERLAY_SCENE := preload("res://scenes/ui/room_layout_overlay.tscn")
 const HELP_OVERLAY_SCENE := preload("res://scenes/ui/help_overlay.tscn")
 const PHONE_OVERLAY_SCENE := preload("res://scenes/ui/phone_overlay.tscn")
+const CHARACTER_SELECT_SCENE := preload("res://scenes/ui/character_select_overlay.tscn")
 const BUBBLE_SCENE := preload("res://scenes/ui/bubble.tscn")
 const NOTIFY_FX_SCENE := preload("res://scenes/ui/notify_fx.tscn")
 const TOAST_SCENE := preload("res://scenes/ui/notification_toast.tscn")
@@ -59,6 +60,7 @@ var _blocked_cells: Dictionary = {}
 var _furniture_list: Array = []
 var _layout_objects: Array = []
 var _phone_overlay: Control = null
+var _character_select_overlay: Control = null
 var _bubble: Control = null
 var _notify_fx: Control = null
 var _toast: Control = null
@@ -109,8 +111,9 @@ func _ready() -> void:
 	_phone_overlay.notification_triggered.connect(_on_phone_notification)
 	_phone_overlay.player_activity.connect(_mark_player_activity)
 	play_together_button.pressed.connect(_on_play_together_pressed)
-	_interaction_specs = CharacterInteractions.load_specs(GameManager.CURRENT_CHAR_ID)
-	_build_interaction_menu()
+	$UI/CharacterButton.pressed.connect(_on_character_button_pressed)
+	GameManager.current_char_changed.connect(_on_current_char_changed)
+	_apply_character(GameManager.get_current_char_id())
 
 	_bubble = BUBBLE_SCENE.instantiate()
 	$UI.add_child(_bubble)
@@ -239,8 +242,8 @@ func _on_phone_notification() -> void:
 		_notify_fx.play_effect()
 	if _toast != null:
 		_toast.position = Vector2(292.0, 42.0)
-		_toast.show_toast()
-	status_label.text = "梅尔收到了新消息！"
+		_toast.show_toast("%s 收到了新消息" % _char_name())
+	status_label.text = "%s收到了新消息！" % _char_name()
 	portrait_manager.set_expression("surprised", 1.5)
 
 
@@ -294,7 +297,7 @@ func _open_help_overlay(mode: String) -> void:
 		_help_overlay.closed.connect(_on_help_overlay_closed)
 	if mode == "guide":
 		_pending_guide = true
-		_help_overlay.setup_guide()
+		_help_overlay.setup_guide(_char_name())
 	else:
 		_pending_guide = false
 		_help_overlay.setup_furniture(FURNITURE_SPECS)
@@ -318,6 +321,55 @@ func _toggle_fullscreen() -> void:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
 	else:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+## ---------------- P4 多角色切换 ----------------
+
+
+func _char_name() -> String:
+	return CharacterCatalog.get_display_name(GameManager.get_current_char_id())
+
+
+## 切换/启动时应用当前角色：小人动画、立绘、名字、互动菜单、状态（原地换人）。
+func _apply_character(char_id: String) -> void:
+	character.set_character(char_id)
+	portrait_manager.set_character(char_id)
+	var name_label: Label = $UI/PortraitLayer/NameLabel
+	if name_label != null:
+		name_label.text = CharacterCatalog.get_display_name(char_id)
+	StatusManager.set_character(char_id)
+	_rebuild_interaction_menu()
+	status_label.text = "已切换为 %s" % CharacterCatalog.get_display_name(char_id)
+
+
+func _on_current_char_changed(char_id: String) -> void:
+	_apply_character(char_id)
+
+
+func _on_character_button_pressed() -> void:
+	## 与手机同规则：电脑 OS / 全屏浮层打开时不可开。
+	if _computer_panel.visible or _settings_overlay.visible or _help_overlay != null and _help_overlay.visible:
+		return
+	if _layout_overlay != null and _layout_overlay.visible:
+		return
+	_mark_player_activity()
+	if _character_select_overlay == null:
+		_character_select_overlay = CHARACTER_SELECT_SCENE.instantiate()
+		$UI.add_child(_character_select_overlay)
+		_character_select_overlay.closed.connect(_on_character_select_closed)
+	_character_select_overlay.open_overlay()
+
+
+func _on_character_select_closed() -> void:
+	status_label.text = "角色列表已关闭"
+
+
+func _rebuild_interaction_menu() -> void:
+	if _interaction_menu != null:
+		_interaction_menu.queue_free()
+		_interaction_menu = null
+	_interaction_specs = CharacterInteractions.load_specs(GameManager.get_current_char_id())
+	_build_interaction_menu()
 
 
 func _on_character_interaction(interaction_name: String) -> void:
@@ -411,6 +463,8 @@ func _handle_furniture_click(furniture: Dictionary) -> void:
 ## ---------------- P3 其他互动（角色文件数据驱动） ----------------
 
 func _build_interaction_menu() -> void:
+	if not _has_character_entry():
+		return
 	var panel := Panel.new()
 	panel.size = Vector2(190, 42 + (4) * 34)  # 上限：角色入口最多显示 3 项 + 标题 + 关闭
 	panel.position = Vector2(150, 84)
@@ -422,7 +476,7 @@ func _build_interaction_menu() -> void:
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
 	var title := Label.new()
-	title.text = "想和梅尔做什么？"
+	title.text = "想和%s做什么？" % _char_name()
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title)
 	for id in _interaction_specs.keys():
@@ -441,11 +495,22 @@ func _build_interaction_menu() -> void:
 	_interaction_menu = panel
 
 
+func _has_character_entry() -> bool:
+	for id in _interaction_specs:
+		var spec: Dictionary = _interaction_specs[id]
+		if str(spec.get("entry", "")) == "character":
+			return true
+	return false
+
+
 func _open_character_interaction_menu() -> void:
 	_mark_player_activity()
-	if _interaction_menu != null:
-		_interaction_menu.visible = true
-		status_label.text = "想做点什么？"
+	if _interaction_menu == null:
+		var name := _char_name()
+		status_label.text = "%s现在没有可点击的互动" % name if _interaction_specs.is_empty() else "当前角色没有角色入口互动"
+		return
+	_interaction_menu.visible = true
+	status_label.text = "想做点什么？"
 
 
 func _close_interaction_menu() -> void:
@@ -547,10 +612,10 @@ func _attract_to_cell(cell: Vector2i) -> void:
 	if not _will_respond():
 		_clear_attract_item()
 		_show_distract_fx()
-		status_label.text = "梅尔似乎没注意到…"
+		status_label.text = "%s似乎没注意到…" % _char_name()
 		return
 	character.play_action("hop")
-	status_label.text = "梅尔被吸引了…"
+	status_label.text = "%s被吸引了…" % _char_name()
 	await get_tree().create_timer(ATTRACT_AFTER_DELAY).timeout
 	if seq != _attract_seq:
 		return
@@ -576,10 +641,10 @@ func _attract_to_furniture(furniture: Dictionary) -> void:
 	if not _will_respond():
 		_clear_attract_item()
 		_show_distract_fx()
-		status_label.text = "梅尔似乎没注意到…"
+		status_label.text = "%s似乎没注意到…" % _char_name()
 		return
 	character.play_action("hop")
-	status_label.text = "梅尔被%s吸引了…" % furniture["type"]
+	status_label.text = "%s被%s吸引了…" % [_char_name(), furniture["type"]]
 	await get_tree().create_timer(ATTRACT_AFTER_DELAY).timeout
 	if seq != _attract_seq:
 		return
@@ -678,7 +743,7 @@ func _start_autonomy() -> void:
 	_autonomy_elapsed = 0.0
 	_autonomy_task = {}
 	_autonomy_wait = randf_range(1.5, 3.0)
-	status_label.text = "梅尔开始自己活动了…"
+	status_label.text = "%s开始自己活动了…" % _char_name()
 
 
 func _stop_autonomy(_interrupt: bool = true) -> void:
@@ -925,7 +990,7 @@ func _on_play_together_pressed() -> void:
 	_set_play_together_visible(false)
 	_autonomy_active = false
 	_autonomy_task = {}
-	status_label.text = "和梅尔一起玩游戏吧！"
+	status_label.text = "和%s一起玩游戏吧！" % _char_name()
 
 
 func _bubble_show(text: String, duration: float = 3.0) -> void:
@@ -964,6 +1029,7 @@ func _run_offline_ai_settlement(seconds: float) -> void:
 		+ "说明：satiety/fatigue 的自然变化已按离线时长先算过一次，这里输出这段经历带来的额外修正（整数，-10~+10）；"
 		+ "mood 由独立生活的经历决定（整数，-15~+15）；affection=1 表示因为想念主人而好感+1（当天好感最多+3）。"
 	) % [hours, mins, StatusManager.get_state_summary()]
+	instruction = instruction.replace("梅尔", _char_name())
 	context.append({"role": "user", "content": instruction})
 	AIConnector.request_json(context, _on_offline_settled, _on_offline_settle_error)
 
@@ -983,14 +1049,14 @@ func _on_offline_settled(data: Dictionary) -> void:
 	if affection and StatusManager.add_autonomy_affection(1):
 		var applied := GameManager.add_affection(GameManager.CURRENT_CHAR_ID, 1, "离线想念", "offline")
 		if applied > 0:
-			status_label.text = "梅尔略带想念地望着你（好感 +1）"
+			status_label.text = "%s略带想念地望着你（好感 +1）" % _char_name()
 			return
-	status_label.text = "梅尔回来见你啦"
+	status_label.text = "%s回来见你啦" % _char_name()
 
 
 func _on_offline_settle_error(_message: String) -> void:
-	_bubble_show("你不在的时候，梅尔过得安静又平淡…", 3.5)
-	status_label.text = "离线期间梅尔独自生活（结算失败，已按时间自动计算）"
+	_bubble_show("你不在的时候，%s过得安静又平淡…" % _char_name(), 3.5)
+	status_label.text = "离线期间%s独自生活（结算失败，已按时间自动计算）" % _char_name()
 
 
 func _clamp_val(value, default: int, lo: int, hi: int) -> int:

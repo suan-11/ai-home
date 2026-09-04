@@ -20,6 +20,14 @@ assets/chars/char_03/
     └── walk_3.png
 ```
 
+## 多角色可用性（P4 多角色切换）
+
+- 角色目录只要同时具备 `persona.json` + `portrait.png` + `sprites/`（至少 idle_0.png 或 walk_0.png 之一），就会自动出现在主界面「角色」按钮的切换列表
+- `portraits/`（差分立绘）与 `interactions.json`（互动）为**可选**：缺失时运行时降级（立绘用单张原图；点击角色无互动菜单）
+- 每个角色的好感度 / 记忆 / 日记 / 状态 **完全独立**（GameManager / MemoryManager / StatusManager 均按 char_id 存取）
+- `persona.json` 可选 `order`（数字，越小越靠前；默认 99）控制切换列表排序
+- 切换后**原地换人**：小人动画、立绘、名字、互动菜单、状态均按新角色加载
+
 ## interactions.json（每个角色可自定义互动）
 
 键为互动 id，值包含：`name`（显示名）、`entry`（入口，`character`=点击角色菜单；`furniture:<交互名>`=家具交互）、`actions`（wave/hop/sad）、`expression`（立绘表情，见 portraits/）、`texts`（随机台词）、`effects`（satiety/mood/fatigue）、`affection`（amount/reason）、`limits`（daily 每日次数 / cooldown 秒）。

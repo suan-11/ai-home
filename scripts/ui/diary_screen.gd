@@ -18,7 +18,9 @@ var _busy := false
 
 
 func _ready() -> void:
-	_char_id = GameManager.CURRENT_CHAR_ID
+	_char_id = GameManager.get_current_char_id()
+	var char_name := CharacterCatalog.get_display_name(_char_id)
+	$Title.text = "日记 · %s" % char_name
 	_date = MemoryManager.today()
 	$BackButton.pressed.connect(_on_back_pressed)
 	$DateBar/PrevButton.pressed.connect(func() -> void: _step_date(-1))
@@ -45,7 +47,7 @@ func _refresh() -> void:
 	date_label.text = _date
 	var diary := MemoryManager.get_diary(_char_id, _date)
 	if diary.is_empty():
-		diary_label.text = "这一天还没有整理日记喵。\n点下方「整理日记」生成。"
+		diary_label.text = "这一天还没有整理日记。\n点下方「整理日记」生成。"
 	else:
 		diary_label.text = diary
 	if not _busy:

@@ -46,16 +46,38 @@ func today() -> String:
 
 
 func get_persona_system(char_id: String) -> String:
-	var fallback := "你是梅尔·艾什礼佩克，来自《霞流宝石心》世界的猫形兽人，天马班首席。"
 	var path := "res://assets/chars/%s/persona.json" % char_id
 	if FileAccess.file_exists(path):
 		var file = FileAccess.open(path, FileAccess.READ)
 		if file != null:
 			var parsed = JSON.parse_string(file.get_as_text())
 			file.close()
-			if parsed is Dictionary and parsed.has("system_prompt"):
-				return str(parsed["system_prompt"])
-	return fallback
+			if parsed is Dictionary:
+				if parsed.has("system_prompt") and str(parsed["system_prompt"]).strip_edges() != "":
+					return str(parsed["system_prompt"])
+				return _build_persona_from_fields(parsed)
+	return "你是住在温馨房间里的AI伙伴，请用自然、简短的语气回应主人。"
+
+
+## 简易人设没有 system_prompt 时，从字段拼接（新角色/未写全人设的降级）。
+func _build_persona_from_fields(persona: Dictionary) -> String:
+	var name := str(persona.get("display_name", persona.get("name", "AI伙伴")))
+	var lines: Array[String] = ["你是%s。" % name]
+	var personality := str(persona.get("personality", ""))
+	if not personality.is_empty():
+		lines.append("性格：%s。" % personality)
+	var style := str(persona.get("speech_style", ""))
+	if not style.is_empty():
+		lines.append("说话风格：%s。" % style)
+	var greeting := str(persona.get("greeting", ""))
+	if not greeting.is_empty():
+		lines.append("开场白：%s" % greeting)
+	lines.append("你是住在房间里的AI角色，不知自己是AI；用自然、简短的语气回应主人。")
+	return "\n".join(lines)
+
+
+func _display_name(char_id: String) -> String:
+	return CharacterCatalog.get_display_name(char_id)
 
 
 ## ---------------- 读写接口 ----------------
@@ -176,7 +198,7 @@ func build_chat_context(char_id: String, system_prompt: String) -> Array:
 	var affection := int(GameManager.get_affection(char_id))
 	messages.append({
 		"role": "system",
-		"content": "当前梅尔对你的好感度：%d/100。只需要在语气和细节上轻微体现（更亲近或略显生分），不要刻意谈论数字。" % affection,
+		"content": "当前%s对你的好感度：%d/100。只需要在语气和细节上轻微体现（更亲近或略显生分），不要刻意谈论数字。" % [_display_name(char_id), affection],
 	})
 	return messages
 
@@ -300,7 +322,7 @@ func generate_diary(char_id: String, date: String, force := false) -> bool:
 
 	var material := _diary_material(char_id, date)
 	if material.is_empty():
-		set_diary(char_id, date, "《%s》\n这一天没有和主人的特别记录喵。" % date)
+		set_diary(char_id, date, "《%s》\n这一天没有和主人的特别记录。" % date)
 		return true
 
 	if not AIConnector.can_send():
@@ -331,7 +353,7 @@ func _on_diary_error(char_id: String, date: String) -> void:
 
 func _diary_prompt(char_id: String, date: String, material: String) -> Array:
 	var system := get_persona_system(char_id)
-	system += "\n\n现在请以梅尔的身份，为%s写一篇当天的简短日记（90-150字）：记录和主人一起做的事、聊天内容、好感度变化。只输出日记正文，不要标题、不要引号、不要解释，语气符合人设。" % date
+	system += "\n\n现在请以%s的身份，为%s写一篇当天的简短日记（90-150字）：记录和主人一起做的事、聊天内容、好感度变化。只输出日记正文，不要标题、不要引号、不要解释，语气符合人设。" % [_display_name(char_id), date]
 	return [
 		{"role": "system", "content": system},
 		{"role": "user", "content": "今天的记录：\n" + material},
@@ -339,7 +361,7 @@ func _diary_prompt(char_id: String, date: String, material: String) -> Array:
 
 
 func _fallback_diary(date: String, material: String) -> String:
-	return "《%s》\n%s\n（好感度与记忆已记录喵）" % [date, material]
+	return "《%s》\n%s\n（好感度与记忆已记录）" % [date, material]
 
 
 func _diary_material(char_id: String, date: String) -> String:
@@ -348,7 +370,7 @@ func _diary_material(char_id: String, date: String) -> String:
 	if not chats.is_empty():
 		parts.append("【聊天记录】")
 		for item in chats:
-			var who := "主人" if str(item["role"]) == "user" else "梅尔"
+			var who := "主人" if str(item["role"]) == "user" else _display_name(char_id)
 			parts.append("%s：%s" % [who, str(item["content"])])
 
 	var events := get_daily_events(char_id, date)

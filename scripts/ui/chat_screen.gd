@@ -8,6 +8,7 @@ signal back_requested
 const CHAR_ID := "char_03"
 
 var _char_id := CHAR_ID
+var _char_name := "梅尔"
 var _messages: Array = []
 var _waiting := false
 var _judging := false
@@ -18,7 +19,10 @@ var _judging := false
 
 
 func _ready() -> void:
-	_char_id = GameManager.CURRENT_CHAR_ID
+	_char_id = GameManager.get_current_char_id()
+	_char_name = CharacterCatalog.get_display_name(_char_id)
+	$Title.text = "聊天 · %s" % _char_name
+	input_edit.placeholder_text = "和%s说点什么…" % _char_name
 	var system_prompt := MemoryManager.get_persona_system(_char_id)
 	_messages = MemoryManager.build_chat_context(_char_id, system_prompt)
 	_show_history()
@@ -38,10 +42,10 @@ func _draw() -> void:
 func _show_history() -> void:
 	var history := MemoryManager.get_short_term(_char_id)
 	if history.is_empty():
-		_append_message("梅尔", "数据呢喵。说正事喵。")
+		_append_message(_char_name, "数据呢。说正事。")
 		return
 	for entry in history:
-		var who := "主人" if str(entry["role"]) == "user" else "梅尔"
+		var who := "主人" if str(entry["role"]) == "user" else _char_name
 		_append_message(who, str(entry["content"]))
 
 
@@ -66,7 +70,7 @@ func _on_chat_reply(text: String) -> void:
 	_messages.append({"role": "assistant", "content": text})
 	MemoryManager.record_chat(_char_id, "assistant", text)
 	MemoryManager.maybe_summarize(_char_id)
-	_append_message("梅尔", text)
+	_append_message(_char_name, text)
 	_start_affection_judgement()
 
 
@@ -81,7 +85,7 @@ func _start_affection_judgement() -> void:
 		judge_messages.append(msg)
 	judge_messages.append({
 		"role": "user",
-		"content": "【好感度判定】基于刚才这轮对话，判断梅尔是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会；同时给出这轮对话对梅尔心情的影响 mood_delta（-2 到 +3 的整数）。"
+		"content": "【好感度判定】基于刚才这轮对话，判断%s是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会；同时给出这轮对话对%s心情的影响 mood_delta（-2 到 +3 的整数）。" % [_char_name, _char_name]
 			+ "请只输出一个 JSON 对象（不要输出任何其他文字，不要用 Markdown 代码块），且必须符合 JSON 语法：键和字符串用双引号，布尔值用 true/false（不加引号），例如："
 			+ "{\"affection\":true,\"reason\":\"被夸奖了\",\"mood_delta\":2}。affection 只能是 true 或 false，reason 是 10 字以内理由。",
 	})

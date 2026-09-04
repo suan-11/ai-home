@@ -4,20 +4,32 @@ extends Node
 ## 在线状态按现实时间缓慢变化（饱食 -1/30min、疲惫 +1/30min）；
 ## 测试倍率 general.dev_state_speed（设置→通用，测试用，正式版移除）。
 ## 状态值内部用 float 平滑变化，对外以整数读取。
+## 多角色：每个角色独立一套状态，_char_id 指向当前角色（GameManager 决定）。
 
 signal status_changed
 
 const STATUS_PATH := "user://status.json"
-const CHAR_ID := "char_03"
+const DEFAULT_CHAR_ID := "char_03"
 const AUTONOMY_DAILY_CAP := 3
 
 var _status: Dictionary = {}
+var _char_id: String = DEFAULT_CHAR_ID
 var _since_save := 0.0
 
 
 func _ready() -> void:
 	_load()
-	_ensure_defaults()
+	_char_id = GameManager.get_current_char_id()
+	_ensure_defaults(_char_id)
+
+
+## 切换到另一角色：加载该角色的状态并广播刷新。
+func set_character(char_id: String) -> void:
+	if char_id.is_empty():
+		return
+	_char_id = char_id
+	_ensure_defaults(char_id)
+	status_changed.emit()
 
 
 ## ---------------- 数据读写 ----------------
@@ -44,8 +56,9 @@ func _save() -> void:
 		file.close()
 
 
-func _ensure_defaults() -> void:
-	var st: Dictionary = _status.get(CHAR_ID, {})
+func _ensure_defaults(char_id: String = "") -> void:
+	var id := char_id if not char_id.is_empty() else _char_id
+	var st: Dictionary = _status.get(id, {})
 	st["satiety"] = float(st.get("satiety", 70.0))
 	st["fatigue"] = float(st.get("fatigue", 30.0))
 	st["mood"] = float(st.get("mood", 60.0))
@@ -53,7 +66,7 @@ func _ensure_defaults() -> void:
 	st["autonomy_date"] = str(st.get("autonomy_date", ""))
 	st["autonomy_gain"] = int(st.get("autonomy_gain", 0))
 	st["last_seen"] = float(st.get("last_seen", Time.get_unix_time_from_system()))
-	_status[CHAR_ID] = st
+	_status[id] = st
 	_save()
 
 
@@ -61,23 +74,23 @@ func _ensure_defaults() -> void:
 
 
 func get_satiety() -> int:
-	return int(_status.get(CHAR_ID, {}).get("satiety", 70.0))
+	return int(_status.get(_char_id, {}).get("satiety", 70.0))
 
 
 func get_mood() -> int:
-	return int(_status.get(CHAR_ID, {}).get("mood", 60.0))
+	return int(_status.get(_char_id, {}).get("mood", 60.0))
 
 
 func get_fatigue() -> int:
-	return int(_status.get(CHAR_ID, {}).get("fatigue", 30.0))
+	return int(_status.get(_char_id, {}).get("fatigue", 30.0))
 
 
 func get_food() -> String:
-	return str(_status.get(CHAR_ID, {}).get("food", "none"))
+	return str(_status.get(_char_id, {}).get("food", "none"))
 
 
 func set_food(kind: String) -> void:
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	var value := kind
 	if value not in ["none", "raw", "cooked"]:
 		value = "none"
@@ -87,7 +100,7 @@ func set_food(kind: String) -> void:
 
 
 func apply_delta(satiety: int = 0, mood: int = 0, fatigue: int = 0) -> void:
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	st["satiety"] = clampi(int(st["satiety"]) + satiety, 0, 100)
 	st["mood"] = clampi(int(st["mood"]) + mood, 0, 100)
 	st["fatigue"] = clampi(int(st["fatigue"]) + fatigue, 0, 100)
@@ -96,7 +109,7 @@ func apply_delta(satiety: int = 0, mood: int = 0, fatigue: int = 0) -> void:
 
 
 func apply_float_delta(satiety: float = 0.0, mood: float = 0.0, fatigue: float = 0.0) -> void:
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	st["satiety"] = clampf(float(st["satiety"]) + satiety, 0.0, 100.0)
 	st["mood"] = clampf(float(st["mood"]) + mood, 0.0, 100.0)
 	st["fatigue"] = clampf(float(st["fatigue"]) + fatigue, 0.0, 100.0)
@@ -108,7 +121,7 @@ func tick_online(delta: float) -> void:
 	## 在线缓慢变化（现实时间口径）：饱食 -1/30min，疲惫 +1/30min。
 	## 测试倍率 general.dev_state_speed（正式版移除）。
 	var speed := float(ConfigManager.get_value("general", "dev_state_speed", 1))
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	st["satiety"] = clampf(float(st["satiety"]) - delta * (1.0 / 1800.0) * speed, 0.0, 100.0)
 	st["fatigue"] = clampf(float(st["fatigue"]) + delta * (1.0 / 1800.0) * speed, 0.0, 100.0)
 	_since_save += delta
@@ -127,13 +140,13 @@ func _notification(what: int) -> void:
 
 
 func get_offline_seconds() -> float:
-	var st: Dictionary = _status.get(CHAR_ID, {})
+	var st: Dictionary = _status.get(_char_id, {})
 	var last := float(st.get("last_seen", Time.get_unix_time_from_system()))
 	return maxf(0.0, Time.get_unix_time_from_system() - last)
 
 
 func mark_seen() -> void:
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	st["last_seen"] = Time.get_unix_time_from_system()
 	_save()
 
@@ -164,7 +177,7 @@ func try_autonomy_affection(amount: int = 1) -> bool:
 func add_autonomy_affection(amount: int = 1) -> bool:
 	## 不受概率限制；仅受每日上限约束（离线结算也走这里）。
 	var today := Time.get_date_string_from_system()
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	if str(st.get("autonomy_date", "")) != today:
 		st["autonomy_date"] = today
 		st["autonomy_gain"] = 0
@@ -178,7 +191,7 @@ func add_autonomy_affection(amount: int = 1) -> bool:
 
 func get_today_autonomy_gain() -> int:
 	var today := Time.get_date_string_from_system()
-	var st: Dictionary = _status[CHAR_ID]
+	var st: Dictionary = _status[_char_id]
 	if str(st.get("autonomy_date", "")) != today:
 		return 0
 	return int(st["autonomy_gain"])
