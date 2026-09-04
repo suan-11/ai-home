@@ -5,6 +5,7 @@ extends Control
 signal back_requested
 signal gomoku_requested
 signal graphwar_requested
+signal tictactoe_requested
 
 @onready var status_label: Label = $WindowPanel/StatusLabel
 
@@ -12,6 +13,7 @@ signal graphwar_requested
 func _ready() -> void:
 	$WindowPanel/GomokuButton.pressed.connect(_on_gomoku_pressed)
 	$WindowPanel/GraphwarButton.pressed.connect(_on_graphwar_pressed)
+	$WindowPanel/TictactoeButton.pressed.connect(_on_tictactoe_pressed)
 	$WindowPanel/FutureButton.pressed.connect(_on_future_pressed)
 	$WindowPanel/BackButton.pressed.connect(_on_back_pressed)
 
@@ -24,6 +26,11 @@ func _on_gomoku_pressed() -> void:
 func _on_graphwar_pressed() -> void:
 	status_label.text = "正在进入函数对打…"
 	graphwar_requested.emit()
+
+
+func _on_tictactoe_pressed() -> void:
+	status_label.text = "正在进入井字棋…"
+	tictactoe_requested.emit()
 
 
 func _on_future_pressed() -> void:

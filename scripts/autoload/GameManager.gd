@@ -147,21 +147,21 @@ func record_interaction_usage(char_id: String, interaction_id: String) -> void:
 	_save()
 
 
-func on_game_finished(char_id: String, result: String) -> int:
+func on_game_finished(char_id: String, result: String, game: String = "五子棋") -> int:
 	var delta := 0
 	var reason := ""
 	match result:
 		"win":
 			delta = 3
-			reason = "和主人下五子棋，主人赢了"
+			reason = "和主人下%s，主人赢了" % game
 		"draw":
 			delta = 1
-			reason = "和主人下五子棋，平局"
+			reason = "和主人下%s，平局" % game
 		"lose":
 			delta = 0
-			reason = "和主人下五子棋，主人输了"
+			reason = "和主人下%s，主人输了" % game
 	if delta > 0:
-		add_affection(char_id, delta, reason, "gomoku")
+		add_affection(char_id, delta, reason, "game")
 	return delta
 
 
