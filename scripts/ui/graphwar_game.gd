@@ -129,10 +129,9 @@ func _draw() -> void:
 	elif _ai_path.size() > 1:
 		_draw_trajectory(_ai_path, Color(1.0, 0.5, 0.5))
 
-	# 飞行中的小球
+	# 飞行中的小球（直径 ≈ 函数线段宽度的 2 倍：线宽 2px → 球直径 4px）
 	if not _active_path.is_empty() and _anim_progress < 1.0:
-		draw_circle(_ball_pos, 4.0, _active_color)
-		draw_circle(_ball_pos, 7.0, Color(_active_color.r, _active_color.g, _active_color.b, 0.3))
+		draw_circle(_ball_pos, 2.0, _active_color)
 
 
 func _draw_balls(is_ai: bool) -> void:
