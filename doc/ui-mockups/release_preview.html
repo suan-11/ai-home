@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIHome 打包效果预览（示意）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #171310; color: #efe7dc; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; padding: 28px 24px 70px; }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 20px; letter-spacing: 1px; }
+  .sub { color: #b9a99a; font-size: 13px; margin-top: 8px; line-height: 1.7; }
+  h2 { font-size: 16px; margin: 34px 0 12px; color: #f4e3c8; }
+
+  /* 窗口 */
+  .window { width: 720px; margin: 0 auto; border-radius: 10px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.5); border: 1px solid #4a3a2e; }
+  .titlebar { height: 30px; background: #2a211e; color: #e8d9c4; display: flex; align-items: center; padding: 0 12px; font-size: 12px; gap: 8px; }
+  .titlebar .dots { display: flex; gap: 5px; margin-right: 8px; }
+  .titlebar .dots i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .titlebar .dots i:nth-child(1){background:#c96b5a} .titlebar .dots i:nth-child(2){background:#d9b98c} .titlebar .dots i:nth-child(3){background:#7f9f6a}
+  .titlebar span { flex: 1; text-align: center; color:#fce9cf; }
+
+  /* 游戏画面（480x360 等比放大 1.5x） */
+  .game { position: relative; width: 720px; height: 540px; background:#2A211E; }
+  .wall { position:absolute; inset:0 0 42% 0; background:#EDD9B8; }
+  .floor { position:absolute; inset:58% 0 0 0; background:#B98A5E; }
+  .window-pane { position:absolute; left:46%; top:14%; width:26%; height:32%; background:#A9D5E6; border:4px solid #D9B98C; border-radius:4px; }
+  .rug { position:absolute; left:36%; bottom:8%; width:34%; height:14%; background:rgba(232,168,124,.5); border-radius:50%; }
+  .bed { position:absolute; left:8%; bottom:12%; width:22%; height:20%; background:#F2E3CB; border:3px solid #D9B98C; border-radius:8px; }
+  .desk { position:absolute; left:70%; bottom:12%; width:20%; height:18%; background:#F2E3CB; border:3px solid #D9B98C; border-radius:8px; }
+  .char { position:absolute; left:47%; bottom:24%; width:7%; height:13%; background:#E8A87C; border:2px solid #D9B98C; border-radius:4px 4px 2px 2px; }
+  .portrait { position:absolute; left:0; top:0; bottom:0; width:26%; background:linear-gradient(180deg, rgba(237,217,184,0), rgba(237,217,184,.75)); }
+  .portrait .face { position:absolute; left:12%; top:8%; width:74%; height:64%; background:#E8B48C; border:3px solid #D9B98C; border-radius:34% 34% 8% 8%; }
+  .portrait .name { position:absolute; left:8px; right:8px; bottom:6px; text-align:center; font-size:13px; font-weight:700; color:#4A3B33; background:#FBF3E4; border:1px solid #D9B98C; border-radius:6px; padding:3px 0; }
+  .status { position:absolute; left:10px; top:10px; font-size:12px; color:#4A3B33; background:#FBF3E4; border:1px solid #D9B98C; border-radius:999px; padding:4px 14px; }
+  .sidebar { position:absolute; right:10px; top:14px; display:flex; flex-direction:column; gap:8px; }
+  .ic { width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#FBF3E4; border:1px solid #D9B98C; border-radius:8px; font-size:18px; }
+
+  /* 产物区 */
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  .card { background:#211b16; border:1px solid #3a2d24; border-radius:12px; padding:16px 18px; }
+  .card h3 { font-size:14px; color:#f4e3c8; margin-bottom:10px; }
+  pre.tree { font-family: Consolas, "Courier New", monospace; font-size:12px; color:#d6c6ae; line-height:1.8; white-space:pre; }
+  .notes { color:#b9a99a; font-size:12px; line-height:2; margin-top:24px; border-top:1px dashed #4a3a2e; padding-top:14px; }
+  .badge { display:inline-block; background:#3a5c3f; color:#dff3df; border-radius:6px; padding:2px 8px; font-size:11px; margin-right:8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AIHome · 打包效果预览（示意稿）</h1>
+  <p class="sub">下方窗口模拟「打包后游戏窗口」的样子（480×360 画布等比放大，方案 A 暖屋手账风）。<br>
+     正式成品 = 双击 <code>AIHome.exe</code> 就会看到这个窗口；当前可用 <code>Godot --main-pack build/AIHome.pck</code> 预览实物。</p>
+
+  <h2>1. 打包后运行窗口（示意）</h2>
+  <div class="window">
+    <div class="titlebar"><div class="dots"><i></i><i></i><i></i></div><span>AIHome — 温馨小屋 · 与 AI 一起生活</span></div>
+    <div class="game">
+      <div class="wall"></div><div class="floor"></div><div class="window-pane"></div><div class="rug"></div><div class="bed"></div><div class="desk"></div><div class="char"></div>
+      <div class="portrait"><div class="face"></div><div class="name">梅尔</div></div>
+      <div class="status">空闲 · 心情不错</div>
+      <div class="sidebar"><div class="ic">⚙</div><div class="ic">✉</div><div class="ic">☺</div><div class="ic">🛋</div></div>
+    </div>
+  </div>
+
+  <h2>2. 打包产物长什么样</h2>
+  <div class="cols">
+    <div class="card"><h3>build / 文件夹（导出后）</h3>
+<pre class="tree">build/
+├── AIHome.pck          ← 资源包（预览用，已生成
+│                         约 3.7MB，无需模板）
+└── AIHome-win64/
+    ├── AIHome.exe      ← 正式版：双击即玩
+    └── (embed_pck 关闭时
+        另有 AIHome.pck)</pre>
+    </div>
+    <div class="card"><h3>GitHub Release（建议）</h3>
+<pre class="tree">v0.1.0-alpha
+├── AIHome-win64.zip    ← 解压→双击 exe
+├── README.txt          ← 玩法/API 设置说明
+└── 截图.png            ← 商店/主页展示</pre>
+    </div>
+  </div>
+
+  <div class="notes">
+    <span class="badge">当前状态</span>资源包 <code>build/AIHome.pck</code> 已生成并可用 Godot 二进制预览；
+    导出配置 <code>export_presets.cfg</code> 已就绪。<br>
+    <span class="badge">还差一步</span>安装 Godot 4.7.2 导出模板（约 500MB，需联网）→ 运行
+    <code>--export-release "Windows Desktop"</code> 得到真正的独立 <code>AIHome.exe</code>。<br>
+    详细步骤见 <code>doc/导出打包说明.md</code>。
+  </div>
+</div>
+</body>
+</html>

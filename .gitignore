@@ -14,3 +14,6 @@ Godot/
 
 # 预览图（不提交）
 previews/
+
+# 导出产物（不提交；export_presets.cfg 保留）
+build/
