@@ -53,7 +53,6 @@ var _token_i := 0
 @onready var score_label: Label = $ScoreLabel
 @onready var formula_input: LineEdit = $BottomBar/FormulaInput
 @onready var fire_button: Button = $BottomBar/FireButton
-@onready var ai_status_label: Label = $Controls/AiStatusLabel
 @onready var tutorial_button: Button = $BottomBar/TutorialButton
 @onready var tutorial_panel: Panel = $TutorialPanel
 @onready var tutorial_close_button: Button = $TutorialPanel/CloseButton

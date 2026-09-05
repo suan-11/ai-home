@@ -83,44 +83,20 @@ offset_right = 426.0
 offset_bottom = 214.0
 mouse_filter = 0
 
-[node name="AiStatusLabel" type="Label" parent="Controls"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 124.0
-offset_bottom = 0.0
-text = ""
-autowrap_mode = 2
-
-[node name="HintLabel" type="Label" parent="Controls"]
-layout_mode = 0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 124.0
-offset_bottom = 88.0
-text = "点击左侧自己的球切换发射球（发射后仍在场，被 AI 击毁才消失）。
-
-x = 离开球心的水平距离；轨迹随炮弹逐步显示。
-
-炮弹命中球不消失、可一穿多，碰到屏幕边缘或球形障碍才消失；先清完 AI 全部 3 球获胜。"
-horizontal_alignment = 0
-vertical_alignment = 0
-autowrap_mode = 2
-
 [node name="RestartButton" type="Button" parent="Controls"]
 layout_mode = 0
 offset_left = 0.0
-offset_top = 92.0
+offset_top = 4.0
 offset_right = 124.0
-offset_bottom = 114.0
+offset_bottom = 26.0
 text = "重新开始"
 
 [node name="BackButton" type="Button" parent="Controls"]
 layout_mode = 0
 offset_left = 0.0
-offset_top = 118.0
+offset_top = 30.0
 offset_right = 124.0
-offset_bottom = 140.0
+offset_bottom = 52.0
 text = "退出"
 
 [node name="BottomBar" type="Control" parent="."]
