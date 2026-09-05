@@ -45,11 +45,11 @@ func _ready() -> void:
 func _draw() -> void:
 	# 应用窗口背景
 	var app_rect := _app_rect()
-	draw_rect(app_rect, Color(0.20, 0.16, 0.20, 0.98))
+	draw_rect(app_rect, Color(0.16, 0.12, 0.10, 0.98))
 	# 标题栏条
 	draw_rect(
 		Rect2(app_rect.position, Vector2(app_rect.size.x, 30)),
-		Color(0.16, 0.13, 0.18)
+		Color(0.42, 0.31, 0.23)
 	)
 
 	# 标准 15 路棋盘

@@ -35,8 +35,8 @@ func _ready() -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2(4, 4), size - Vector2(8, 8)), Color(0.20, 0.16, 0.20, 0.98))
-	draw_rect(Rect2(Vector2(4, 4), Vector2(size.x - 8, 30)), Color(0.16, 0.13, 0.18))
+	draw_rect(Rect2(Vector2(4, 4), size - Vector2(8, 8)), Color(0.16, 0.12, 0.10, 0.98))
+	draw_rect(Rect2(Vector2(4, 4), Vector2(size.x - 8, 30)), Color(0.42, 0.31, 0.23))
 
 
 func _show_history() -> void:

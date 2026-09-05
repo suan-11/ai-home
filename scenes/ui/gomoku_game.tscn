@@ -1,7 +1,22 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/gomoku_game.gd" id="1_game"]
 [ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_result"]
+bg_color = Color(0.984314, 0.952941, 0.894118, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.85098, 0.72549, 0.54902, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.290196, 0.231373, 0.2, 0.18)
+shadow_size = 3
+shadow_offset = Vector2(0, 2)
 
 [node name="GomokuGame" type="Control"]
 theme = ExtResource("100_theme")
@@ -53,6 +68,7 @@ offset_bottom = 130.0
 text = "退出"
 
 [node name="ResultPanel" type="Panel" parent="."]
+theme_override_styles/panel = SubResource("StyleBoxFlat_result")
 visible = false
 layout_mode = 1
 anchors_preset = 8
@@ -69,6 +85,7 @@ grow_vertical = 2
 mouse_filter = 0
 
 [node name="ResultLabel" type="Label" parent="ResultPanel"]
+theme_override_colors/font_color = Color(0.290196, 0.231373, 0.2, 1)
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
