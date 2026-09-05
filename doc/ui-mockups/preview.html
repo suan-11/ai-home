@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIHome UI 重绘方案预览（4 风格对照）</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #171310;
+    color: #efe7dc;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    padding: 28px 24px 80px;
+  }
+  header { max-width: 1240px; margin: 0 auto 10px; }
+  header h1 { font-size: 22px; letter-spacing: 1px; }
+  header p { color: #b9a99a; margin-top: 8px; font-size: 13px; line-height: 1.7; }
+  .legend { max-width: 1240px; margin: 0 auto 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .legend a {
+    color: #f4e3c8; background: #2a211c; border: 1px solid #4a3a2e; border-radius: 8px;
+    padding: 6px 12px; text-decoration: none; font-size: 13px;
+  }
+  .legend a:hover { background: #3a2d24; }
+
+  .scheme { max-width: 1240px; margin: 44px auto 0; background: #211b16; border: 1px solid #3a2d24; border-radius: 18px; padding: 26px 28px 30px; }
+  .scheme h2 { font-size: 18px; display: flex; align-items: baseline; gap: 12px; }
+  .scheme h2 .tag { font-size: 12px; font-weight: 400; color: var(--accent); }
+  .scheme .intro { color: #c9b8a8; font-size: 13px; margin-top: 8px; line-height: 1.8; }
+
+  .palette { display: flex; gap: 8px; margin: 16px 0 4px; flex-wrap: wrap; }
+  .palette .sw { width: 74px; }
+  .palette .sw i { display: block; height: 34px; border-radius: 6px; border: 1px solid rgba(255,255,255,.18); }
+  .palette .sw em { display: block; font-style: normal; font-size: 10px; color: #b9a99a; margin-top: 4px; text-align: center; line-height: 1.3; }
+
+  .stages { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 18px; }
+  .stages.small { grid-template-columns: repeat(3, 1fr); }
+  .stage {
+    position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .stage .caption {
+    position: absolute; left: 0; top: 0; z-index: 60; padding: 4px 8px;
+    font-size: 11px; background: var(--surface-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 0 0 8px 0;
+  }
+  .stage.small .caption { font-size: 10px; }
+
+  /* ---------- 通用 mock 元素 ---------- */
+  .wall { position: absolute; inset: 0 0 42% 0; background: var(--wall); }
+  .floor { position: absolute; inset: 58% 0 0 0; background: var(--floor); }
+  .window {
+    position: absolute; left: 46%; top: 14%; width: 26%; height: 32%;
+    background: var(--window, #a9d5e6); border: 4px solid var(--border); border-radius: 4px;
+  }
+  .rug { position: absolute; left: 36%; bottom: 8%; width: 34%; height: 14%; background: var(--rug, rgba(232,168,124,.5)); border-radius: 50%; }
+  .bed { position: absolute; left: 8%; bottom: 12%; width: 22%; height: 20%; background: var(--surface-2); border: 3px solid var(--border); border-radius: var(--radius); }
+  .desk { position: absolute; left: 70%; bottom: 12%; width: 20%; height: 18%; background: var(--surface-2); border: 3px solid var(--border); border-radius: var(--radius); }
+  .char-sprite {
+    position: absolute; left: 47%; bottom: 24%; width: 7%; height: 13%;
+    background: var(--accent); border: 2px solid var(--border); border-radius: 4px 4px 2px 2px;
+  }
+  .portrait-box {
+    position: absolute; left: 0; top: 0; bottom: 0; width: 26%;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: var(--portrait-bg, linear-gradient(180deg, rgba(237,217,184,.0), rgba(237,217,184,.65)));
+  }
+  .portrait-face {
+    width: 74%; height: 68%; margin-bottom: 26px; border-radius: 34% 34% 8% 8%;
+    background: var(--portrait, #e8b48c); border: 3px solid var(--border);
+  }
+  .name-tag {
+    position: absolute; left: 8px; right: 8px; bottom: 6px; text-align: center;
+    font-size: 12px; font-weight: 700; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 6px; padding: 3px 0;
+  }
+  .status-chip {
+    position: absolute; left: 10px; top: 10px; z-index: 50;
+    font-size: 11px; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 999px; padding: 4px 12px;
+    box-shadow: var(--shadow);
+  }
+  .sidebar { position: absolute; right: 10px; top: 14px; z-index: 50; display: flex; flex-direction: column; gap: 10px; }
+  .icon-btn {
+    width: 44px; height: 44px; font-size: 20px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+  .icon-btn:first-child { color: var(--accent); }
+
+  /* 电脑 OS */
+  .os-titlebar {
+    position: absolute; left: 0; right: 0; top: 0; height: 15%; z-index: 30;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 12px;
+    background: var(--titlebar, var(--surface-2)); color: var(--text);
+    border-bottom: 2px solid var(--border); font-size: 13px; font-weight: 700;
+  }
+  .os-close { font-size: 15px; color: var(--danger, #c96b5a); }
+  .os-desktop {
+    position: absolute; inset: 15% 0 18% 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    padding: 18px; align-content: start;
+  }
+  .os-icon {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    min-height: 96px; background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+    font-size: 12px;
+  }
+  .os-icon b { font-weight: 600; }
+  .os-icon .ico { font-size: 22px; }
+  .os-taskbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 18%; z-index: 30;
+    display: flex; align-items: center; justify-content: space-between; padding: 0 16px;
+    background: var(--taskbar, var(--surface-2)); color: var(--text);
+    border-top: 2px solid var(--border); font-size: 12px;
+  }
+  .start { background: var(--accent); color: var(--accent-text, #fff); padding: 3px 12px; border-radius: 6px; font-weight: 700; box-shadow: var(--shadow); }
+
+  /* 游戏中心 */
+  .game-panel { position: absolute; inset: 5%; background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); color: var(--text); display: flex; flex-direction: column; }
+  .game-title { text-align: center; font-size: 14px; font-weight: 800; padding: 10px 0 6px; }
+  .game-list { flex: 1; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 7px; }
+  .game-item {
+    display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 5px 10px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+    font-size: 12px; box-shadow: var(--shadow);
+  }
+  .game-item .gi-name { font-weight: 700; }
+  .game-item .gi-sub { margin-left: auto; font-size: 10px; color: var(--text-dim); }
+  .game-list .dim { opacity: .65; }
+  .game-status { text-align: center; font-size: 11px; color: var(--text-dim); padding: 6px 0 10px; }
+
+  /* 手机 */
+  .phone-panel {
+    position: absolute; right: 6%; top: 12%; bottom: 8%; width: 62%;
+    background: var(--surface); border: 2px solid var(--border); border-radius: 14px; box-shadow: var(--shadow);
+    color: var(--text); display: flex; flex-direction: column; overflow: hidden;
+  }
+  .phone-title { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; padding: 8px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  .phone-body { flex: 1; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .msg { max-width: 78%; font-size: 11px; padding: 6px 9px; border-radius: 10px; line-height: 1.5; }
+  .msg.me { align-self: flex-end; background: var(--accent); color: var(--accent-text, #fff); }
+  .msg.her { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--border); }
+  .phone-input { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); }
+  .phone-input input { flex: 1; min-width: 0; font-size: 11px; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-2); color: var(--text); }
+  .phone-input button { font-size: 11px; padding: 4px 12px; background: var(--accent); color: var(--accent-text, #fff); border: none; border-radius: 6px; }
+
+  .notes { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; }
+  .notes div { background: var(--surface-2); color: var(--text); border: 1px dashed var(--border); border-radius: 8px; padding: 6px 12px; font-size: 12px; }
+
+  footer { max-width: 1240px; margin: 40px auto 0; color: #8d7f72; font-size: 12px; line-height: 1.8; }
+
+  /* ============ 方案 A：暖屋手账 ============ */
+  .scheme-a {
+    --bg: #2A211E; --wall: #EDD9B8; --floor: #B98A5E;
+    --surface: #FBF3E4; --surface-2: #F2E3CB; --border: #D9B98C;
+    --accent: #E8A87C; --accent-2: #7F9F6A; --text: #4A3B33; --text-dim: #8A7466;
+    --radius: 10px; --shadow: 0 2px 6px rgba(74,59,51,.25);
+    --titlebar: #6B4F3A; --taskbar: #6B4F3A; --window: #A9D5E6; --rug: rgba(232,168,124,.5);
+    --portrait-bg: linear-gradient(180deg, rgba(237,217,184,0), rgba(237,217,184,.75));
+    --portrait: #E8B48C;
+  }
+  .scheme-a .os-titlebar, .scheme-a .os-taskbar { color: #FBF3E4; }
+  .scheme-a .status-chip { transform: rotate(-2deg); }
+  .scheme-a .game-item, .scheme-a .os-icon { background: #FFF7EC; }
+
+  /* ============ 方案 B：现代清爽 ============ */
+  .scheme-b {
+    --bg: #F4F5F7; --wall: #E8F0F5; --floor: #DDE7EC;
+    --surface: #FFFFFF; --surface-2: #F1F4F8; --border: #E2E7EE;
+    --accent: #5CA9A7; --accent-2: #F2A05D; --text: #2B2D33; --text-dim: #7A828E;
+    --radius: 12px; --shadow: 0 2px 10px rgba(43,45,51,.08);
+    --window: #DCEFF5; --rug: rgba(92,169,167,.18);
+    --portrait-bg: linear-gradient(180deg, rgba(232,240,245,0), rgba(232,240,245,.9));
+    --portrait: #F0C29A;
+  }
+  .scheme-b .stage { border: none; }
+  .scheme-b .os-titlebar, .scheme-b .os-taskbar { background: rgba(255,255,255,.85); border-bottom: 1px solid var(--border); }
+  .scheme-b .status-chip { box-shadow: 0 1px 4px rgba(43,45,51,.12); }
+  .scheme-b .game-item { box-shadow: none; }
+
+  /* ============ 方案 C：夜幕霓虹 ============ */
+  .scheme-c {
+    --bg: #0F0D16; --wall: #161226; --floor: #1D1830;
+    --surface: rgba(34,29,54,.78); --surface-2: #2A2445; --border: rgba(124,107,255,.4);
+    --accent: #A476FF; --accent-2: #5EE7E0; --text: #EDE8FA; --text-dim: #9A93B8;
+    --radius: 14px; --shadow: 0 0 14px rgba(164,118,255,.25);
+    --titlebar: #201A38; --taskbar: rgba(32,26,56,.9); --window: #2A2445; --rug: rgba(94,231,224,.14);
+    --portrait-bg: linear-gradient(180deg, rgba(22,18,38,0), rgba(22,18,38,.9));
+    --portrait: #C79BE8;
+  }
+  .scheme-c .stage { box-shadow: 0 0 24px rgba(94,231,224,.12); }
+  .scheme-c .game-item, .scheme-c .os-icon, .scheme-c .phone-panel { backdrop-filter: blur(6px); }
+  .scheme-c .os-titlebar, .scheme-c .os-taskbar { color: var(--text); }
+  .scheme-c .msg.me { background: linear-gradient(135deg, #A476FF, #5EE7E0); }
+  .scheme-c .icon-btn, .scheme-c .status-chip { background: rgba(34,29,54,.8); }
+
+  /* ============ 方案 D：像素玩具箱 ============ */
+  .scheme-d {
+    --bg: #1D2A3A; --wall: #33475E; --floor: #2B3B4F;
+    --surface: #3A4E68; --surface-2: #2E4258; --border: #FFD34E;
+    --accent: #FFD34E; --accent-2: #FF9F45; --text: #F5F0E6; --text-dim: #A8B4C6;
+    --radius: 4px; --shadow: 4px 4px 0 #14202E;
+    --titlebar: #2E4258; --taskbar: #2E4258; --window: #4A6191; --rug: rgba(255,159,69,.28);
+    --portrait-bg: linear-gradient(180deg, rgba(51,71,94,0), rgba(51,71,94,.9));
+    --portrait: #FFB173; --accent-text: #1D2A3A;
+  }
+  .scheme-d { font-family: "Courier New", monospace; }
+  .scheme-d .stage { border-width: 3px; }
+  .scheme-d .os-desktop { background-image: repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,0,0,.07) 2px 3px); }
+  .scheme-d .os-titlebar, .scheme-d .os-taskbar { border-style: double; }
+  .scheme-d .game-item { font-family: "Courier New", monospace; }
+  .scheme-d .game-title { color: #FFD34E; text-shadow: 2px 2px 0 #000; }
+  .scheme-d .icon-btn { background: #FFD34E; color: #1D2A3A; font-weight: 700; }
+  .scheme-d .icon-btn:nth-child(2) { background: #FF9F45; color: #1D2A3A; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AIHome UI 重绘方案 · 视觉对照稿</h1>
+  <p>同一组界面（主房间 UI / 电脑桌面 / 游戏中心 / 手机消息），按 4 种风格分别渲染，用于方向选择。<br>
+     预览为静态 HTML 风格稿，非 Godot 运行截图；最终实现 = 全局 <code>theme.tres</code> + StyleBoxFlat，色值与组件规则见 <code>doc/UI重绘方案.md</code>。</p>
+</header>
+
+<div class="legend">
+  <a href="#a">A 暖屋手账（推荐）</a>
+  <a href="#b">B 现代清爽</a>
+  <a href="#c">C 夜幕霓虹</a>
+  <a href="#d">D 像素玩具箱</a>
+</div>
+
+<!-- ================= A ================= -->
+<section class="scheme scheme-a" id="a">
+  <h2>方案 A · 暖屋手账风 <span class="tag">推荐默认方向 · 温馨治愈</span></h2>
+  <p class="intro">延续现有暖色像素魂，向「精致手账 / 小木屋」打磨：奶白纸面卡片、木纹深底、暖金描边、蜜桃橙强调；电脑做成复古米色 CRT 壳。最贴合「温馨陪伴」的产品定位。</p>
+  <div class="palette">
+    <div class="sw"><i style="background:#2A211E"></i><em>底 #2A211E</em></div>
+    <div class="sw"><i style="background:#FBF3E4"></i><em>纸面 #FBF3E4</em></div>
+    <div class="sw"><i style="background:#D9B98C"></i><em>描边 #D9B98C</em></div>
+    <div class="sw"><i style="background:#E8A87C"></i><em>强调 #E8A87C</em></div>
+    <div class="sw"><i style="background:#4A3B33"></i><em>文字 #4A3B33</em></div>
+    <div class="sw"><i style="background:#F2E3CB"></i><em>次级 #F2E3CB</em></div>
+  </div>
+
+  <div class="stages">
+    <div class="stage">
+      <div class="caption">主界面</div>
+      <div class="wall"></div><div class="floor"></div><div class="window"></div><div class="rug"></div><div class="bed"></div><div class="desk"></div><div class="char-sprite"></div>
+      <div class="portrait-box"><div class="portrait-face"></div><div class="name-tag">梅尔</div></div>
+      <div class="status-chip">空闲 · 心情不错</div>
+      <div class="sidebar">
+        <div class="icon-btn">⚙</div><div class="icon-btn">✉</div><div class="icon-btn">☺</div><div class="icon-btn">🛋</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="caption">电脑 OS 桌面</div>
+      <div class="os-titlebar"><span>电脑</span><span class="os-close">×</span></div>
+      <div class="os-desktop">
+        <div class="os-icon"><span class="ico">🎮</span><b>游戏</b></div>
+        <div class="os-icon"><span class="ico">💬</span><b>聊天</b></div>
+        <div class="os-icon"><span class="ico">📔</span><b>日记</b></div>
+        <div class="os-icon"><span class="ico">＋</span><b>更多</b></div>
+      </div>
+      <div class="os-taskbar"><span class="start">开始</span><span>AIHome OS v0.1</span></div>
+    </div>
+  </div>
+
+  <div class="stages small">
+    <div class="stage small">
+      <div class="caption">游戏中心</div>
+      <div class="game-panel">
+        <div class="game-title">游戏中心</div>
+        <div class="game-list">
+          <div class="game-item"><span class="gi-name">五子棋</span><span class="gi-sub">与 AI 对弈</span></div>
+          <div class="game-item"><span class="gi-name">Graphwar</span><span class="gi-sub">函数对打</span></div>
+          <div class="game-item"><span class="gi-name">21点</span><span class="gi-sub">AI 庄家</span></div>
+          <div class="game-item"><span class="gi-name">贪吃蛇</span><span class="gi-sub">赛跑</span></div>
+          <div class="game-item dim"><span class="gi-name">更多…</span></div>
+        </div>
+        <div class="game-status">请选择游戏（列表可滚动）</div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">手机消息</div>
+      <div class="phone-panel">
+        <div class="phone-title"><span>梅尔 · 手机</span><span>×</span></div>
+        <div class="phone-body">
+          <div class="msg her">今晚想一起玩游戏吗？</div>
+          <div class="msg me">好啊！开一局五子棋！</div>
+          <div class="msg her">嘻嘻，你来啦～</div>
+        </div>
+        <div class="phone-input"><input placeholder="发消息…"><button>发送</button></div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">聊天应用</div>
+      <div class="game-panel" style="inset:5%">
+        <div class="game-title" style="text-align:left;padding:10px 14px 6px">与梅尔聊天</div>
+        <div class="game-list">
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">梅尔</span>
+            <span>今天过得怎么样？</span>
+          </div>
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">你</span>
+            <span>还不错，看了会书。</span>
+          </div>
+        </div>
+        <div class="game-status">输入框（此屏为整屏对话）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>与房间画风一致，风险最低</div>
+    <div>暖金描边 + 纸面白卡片</div>
+    <div>推荐作为实现主体</div>
+  </div>
+</section>
+
+<!-- ================= B ================= -->
+<section class="scheme scheme-b" id="b">
+  <h2>方案 B · 现代清爽扁平 <span class="tag">干净高效 · 最高可读性</span></h2>
+  <p class="intro">把电脑 OS 往现代轻量桌面方向做：白 + 浅灰 + 清透蓝绿，无描边、靠阴影分层。可读性最强、素材成本最低，但需要插画/图标来调和与像素房间的风格差异。</p>
+  <div class="palette">
+    <div class="sw"><i style="background:#F4F5F7"></i><em>底 #F4F5F7</em></div>
+    <div class="sw"><i style="background:#FFFFFF"></i><em>面 #FFFFFF</em></div>
+    <div class="sw"><i style="background:#E2E7EE"></i><em>线 #E2E7EE</em></div>
+    <div class="sw"><i style="background:#5CA9A7"></i><em>强调 #5CA9A7</em></div>
+    <div class="sw"><i style="background:#2B2D33"></i><em>文字 #2B2D33</em></div>
+    <div class="sw"><i style="background:#F1F4F8"></i><em>次级 #F1F4F8</em></div>
+  </div>
+
+  <div class="stages">
+    <div class="stage">
+      <div class="caption">主界面</div>
+      <div class="wall"></div><div class="floor"></div><div class="window"></div><div class="rug"></div><div class="bed"></div><div class="desk"></div><div class="char-sprite"></div>
+      <div class="portrait-box"><div class="portrait-face"></div><div class="name-tag">梅尔</div></div>
+      <div class="status-chip">空闲 · 心情不错</div>
+      <div class="sidebar">
+        <div class="icon-btn">⚙</div><div class="icon-btn">✉</div><div class="icon-btn">☺</div><div class="icon-btn">🛋</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="caption">电脑 OS 桌面</div>
+      <div class="os-titlebar"><span>电脑</span><span class="os-close">×</span></div>
+      <div class="os-desktop">
+        <div class="os-icon"><span class="ico">🎮</span><b>游戏</b></div>
+        <div class="os-icon"><span class="ico">💬</span><b>聊天</b></div>
+        <div class="os-icon"><span class="ico">📔</span><b>日记</b></div>
+        <div class="os-icon"><span class="ico">＋</span><b>更多</b></div>
+      </div>
+      <div class="os-taskbar"><span class="start">开始</span><span>AIHome OS v0.1</span></div>
+    </div>
+  </div>
+
+  <div class="stages small">
+    <div class="stage small">
+      <div class="caption">游戏中心</div>
+      <div class="game-panel">
+        <div class="game-title">游戏中心</div>
+        <div class="game-list">
+          <div class="game-item"><span class="gi-name">五子棋</span><span class="gi-sub">与 AI 对弈</span></div>
+          <div class="game-item"><span class="gi-name">Graphwar</span><span class="gi-sub">函数对打</span></div>
+          <div class="game-item"><span class="gi-name">21点</span><span class="gi-sub">AI 庄家</span></div>
+          <div class="game-item"><span class="gi-name">贪吃蛇</span><span class="gi-sub">赛跑</span></div>
+          <div class="game-item dim"><span class="gi-name">更多…</span></div>
+        </div>
+        <div class="game-status">请选择游戏（列表可滚动）</div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">手机消息</div>
+      <div class="phone-panel">
+        <div class="phone-title"><span>梅尔 · 手机</span><span>×</span></div>
+        <div class="phone-body">
+          <div class="msg her">今晚想一起玩游戏吗？</div>
+          <div class="msg me">好啊！开一局五子棋！</div>
+          <div class="msg her">嘻嘻，你来啦～</div>
+        </div>
+        <div class="phone-input"><input placeholder="发消息…"><button>发送</button></div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">聊天应用</div>
+      <div class="game-panel" style="inset:5%">
+        <div class="game-title" style="text-align:left;padding:10px 14px 6px">与梅尔聊天</div>
+        <div class="game-list">
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">梅尔</span>
+            <span>今天过得怎么样？</span>
+          </div>
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">你</span>
+            <span>还不错，看了会书。</span>
+          </div>
+        </div>
+        <div class="game-status">输入框（此屏为整屏对话）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>可读性第一，阴影分层清晰</div>
+    <div>几乎不需要新素材</div>
+    <div>需图标/插画调和像素差异</div>
+  </div>
+</section>
+
+<!-- ================= C ================= -->
+<section class="scheme scheme-c" id="c">
+  <h2>方案 C · 夜幕霓虹 <span class="tag">沉浸陪伴 · 可做夜间模式</span></h2>
+  <p class="intro">深紫黑 + 玻璃拟态 + 电紫/荧光青霓虹微光，像深夜亮着的一盏灯。适合后续作为「夜间模式」与方案 A 并存；本期实现成本与视觉翻车风险都最高。</p>
+  <div class="palette">
+    <div class="sw"><i style="background:#0F0D16"></i><em>底 #0F0D16</em></div>
+    <div class="sw"><i style="background:rgba(34,29,54,.78)"></i><em>玻璃面</em></div>
+    <div class="sw"><i style="background:rgba(124,107,255,.4)"></i><em>霓虹边</em></div>
+    <div class="sw"><i style="background:#A476FF"></i><em>电紫 #A476FF</em></div>
+    <div class="sw"><i style="background:#5EE7E0"></i><em>荧光青 #5EE7E0</em></div>
+    <div class="sw"><i style="background:#EDE8FA"></i><em>文字 #EDE8FA</em></div>
+  </div>
+
+  <div class="stages">
+    <div class="stage">
+      <div class="caption">主界面</div>
+      <div class="wall"></div><div class="floor"></div><div class="window"></div><div class="rug"></div><div class="bed"></div><div class="desk"></div><div class="char-sprite"></div>
+      <div class="portrait-box"><div class="portrait-face"></div><div class="name-tag">梅尔</div></div>
+      <div class="status-chip">空闲 · 心情不错</div>
+      <div class="sidebar">
+        <div class="icon-btn">⚙</div><div class="icon-btn">✉</div><div class="icon-btn">☺</div><div class="icon-btn">🛋</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="caption">电脑 OS 桌面</div>
+      <div class="os-titlebar"><span>电脑</span><span class="os-close">×</span></div>
+      <div class="os-desktop">
+        <div class="os-icon"><span class="ico">🎮</span><b>游戏</b></div>
+        <div class="os-icon"><span class="ico">💬</span><b>聊天</b></div>
+        <div class="os-icon"><span class="ico">📔</span><b>日记</b></div>
+        <div class="os-icon"><span class="ico">＋</span><b>更多</b></div>
+      </div>
+      <div class="os-taskbar"><span class="start">开始</span><span>AIHome OS v0.1</span></div>
+    </div>
+  </div>
+
+  <div class="stages small">
+    <div class="stage small">
+      <div class="caption">游戏中心</div>
+      <div class="game-panel">
+        <div class="game-title">游戏中心</div>
+        <div class="game-list">
+          <div class="game-item"><span class="gi-name">五子棋</span><span class="gi-sub">与 AI 对弈</span></div>
+          <div class="game-item"><span class="gi-name">Graphwar</span><span class="gi-sub">函数对打</span></div>
+          <div class="game-item"><span class="gi-name">21点</span><span class="gi-sub">AI 庄家</span></div>
+          <div class="game-item"><span class="gi-name">贪吃蛇</span><span class="gi-sub">赛跑</span></div>
+          <div class="game-item dim"><span class="gi-name">更多…</span></div>
+        </div>
+        <div class="game-status">请选择游戏（列表可滚动）</div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">手机消息</div>
+      <div class="phone-panel">
+        <div class="phone-title"><span>梅尔 · 手机</span><span>×</span></div>
+        <div class="phone-body">
+          <div class="msg her">今晚想一起玩游戏吗？</div>
+          <div class="msg me">好啊！开一局五子棋！</div>
+          <div class="msg her">嘻嘻，你来啦～</div>
+        </div>
+        <div class="phone-input"><input placeholder="发消息…"><button>发送</button></div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">聊天应用</div>
+      <div class="game-panel" style="inset:5%">
+        <div class="game-title" style="text-align:left;padding:10px 14px 6px">与梅尔聊天</div>
+        <div class="game-list">
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">梅尔</span>
+            <span>今天过得怎么样？</span>
+          </div>
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">你</span>
+            <span>还不错，看了会书。</span>
+          </div>
+        </div>
+        <div class="game-status">输入框（此屏为整屏对话）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>夜间陪伴氛围最强</div>
+    <div>玻璃拟态最配「房间不被遮挡」</div>
+    <div>风险：小屏发光易脏、需额外 shader</div>
+  </div>
+</section>
+
+<!-- ================= D ================= -->
+<section class="scheme scheme-d" id="d">
+  <h2>方案 D · 像素玩具箱 <span class="tag">8-bit 复古 · 强游戏感</span></h2>
+  <p class="intro">把像素推到极致：高饱和亮黄/活力橙、粗黑描边、硬投影、CRT 扫描线、卡带式按钮，与像素小人/家具完全同源，游戏中心最出彩。中文像素字体字库与可读性是主要成本。</p>
+  <div class="palette">
+    <div class="sw"><i style="background:#1D2A3A"></i><em>底 #1D2A3A</em></div>
+    <div class="sw"><i style="background:#3A4E68"></i><em>面 #3A4E68</em></div>
+    <div class="sw"><i style="background:#FFD34E"></i><em>亮黄 #FFD34E</em></div>
+    <div class="sw"><i style="background:#FF9F45"></i><em>橙 #FF9F45</em></div>
+    <div class="sw"><i style="background:#14202E"></i><em>硬影 #14202E</em></div>
+    <div class="sw"><i style="background:#F5F0E6"></i><em>文字 #F5F0E6</em></div>
+  </div>
+
+  <div class="stages">
+    <div class="stage">
+      <div class="caption">主界面</div>
+      <div class="wall"></div><div class="floor"></div><div class="window"></div><div class="rug"></div><div class="bed"></div><div class="desk"></div><div class="char-sprite"></div>
+      <div class="portrait-box"><div class="portrait-face"></div><div class="name-tag">梅尔</div></div>
+      <div class="status-chip">空闲 · 心情不错</div>
+      <div class="sidebar">
+        <div class="icon-btn">⚙</div><div class="icon-btn">✉</div><div class="icon-btn">☺</div><div class="icon-btn">🛋</div>
+      </div>
+    </div>
+    <div class="stage">
+      <div class="caption">电脑 OS 桌面</div>
+      <div class="os-titlebar"><span>电脑</span><span class="os-close">×</span></div>
+      <div class="os-desktop">
+        <div class="os-icon"><span class="ico">🎮</span><b>游戏</b></div>
+        <div class="os-icon"><span class="ico">💬</span><b>聊天</b></div>
+        <div class="os-icon"><span class="ico">📔</span><b>日记</b></div>
+        <div class="os-icon"><span class="ico">＋</span><b>更多</b></div>
+      </div>
+      <div class="os-taskbar"><span class="start">开始</span><span>AIHome OS v0.1</span></div>
+    </div>
+  </div>
+
+  <div class="stages small">
+    <div class="stage small">
+      <div class="caption">游戏中心</div>
+      <div class="game-panel">
+        <div class="game-title">游戏中心</div>
+        <div class="game-list">
+          <div class="game-item"><span class="gi-name">五子棋</span><span class="gi-sub">与 AI 对弈</span></div>
+          <div class="game-item"><span class="gi-name">Graphwar</span><span class="gi-sub">函数对打</span></div>
+          <div class="game-item"><span class="gi-name">21点</span><span class="gi-sub">AI 庄家</span></div>
+          <div class="game-item"><span class="gi-name">贪吃蛇</span><span class="gi-sub">赛跑</span></div>
+          <div class="game-item dim"><span class="gi-name">更多…</span></div>
+        </div>
+        <div class="game-status">请选择游戏（列表可滚动）</div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">手机消息</div>
+      <div class="phone-panel">
+        <div class="phone-title"><span>梅尔 · 手机</span><span>×</span></div>
+        <div class="phone-body">
+          <div class="msg her">今晚想一起玩游戏吗？</div>
+          <div class="msg me">好啊！开一局五子棋！</div>
+          <div class="msg her">嘻嘻，你来啦～</div>
+        </div>
+        <div class="phone-input"><input placeholder="发消息…"><button>发送</button></div>
+      </div>
+    </div>
+    <div class="stage small">
+      <div class="caption">聊天应用</div>
+      <div class="game-panel" style="inset:5%">
+        <div class="game-title" style="text-align:left;padding:10px 14px 6px">与梅尔聊天</div>
+        <div class="game-list">
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">梅尔</span>
+            <span>今天过得怎么样？</span>
+          </div>
+          <div class="game-item" style="align-items:flex-start;flex-direction:column;gap:2px">
+            <span style="font-size:10px;color:var(--text-dim)">你</span>
+            <span>还不错，看了会书。</span>
+          </div>
+        </div>
+        <div class="game-status">输入框（此屏为整屏对话）</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="notes">
+    <div>与像素房间完全同源</div>
+    <div>游戏中心 = 卡带墙，最出彩</div>
+    <div>风险：中文像素字体 + 长文可读性</div>
+  </div>
+</section>
+
+<footer>
+  预览仅示意风格（配色 / 描边 / 圆角 / 阴影 / 排版），非最终像素级还原。实现时按 <code>doc/UI重绘方案.md</code> 建立 <code>theme.tres</code> 与通用组件；选择确定后回写到 <code>doc/UI重构与重绘计划.md</code>。
+</footer>
+
+</body>
+</html>
