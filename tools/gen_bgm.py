@@ -90,7 +90,7 @@ for i in range(N):
     v = max(-1.0, min(1.0, v))
     samples.append(int(v * 32000))
 
-with wave.open(r"assets/sfx/bgm_room.wav", "wb") as w:
+with wave.open(r"assets/bgm/bgm_room.wav", "wb") as w:
     w.setnchannels(1)
     w.setsampwidth(2)
     w.setframerate(SR)
