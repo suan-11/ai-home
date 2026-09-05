@@ -1,9 +1,11 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/computer_panel.gd" id="1_panel"]
 [ext_resource type="Script" path="res://scripts/ui/computer_screen.gd" id="2_screen"]
+[ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
 
 [node name="ComputerPanel" type="Control"]
+theme = ExtResource("100_theme")
 visible = false
 layout_mode = 3
 anchors_preset = 15

@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/notification_toast.gd" id="1_toast"]
 [ext_resource type="Texture2D" path="res://assets/ui/icon_phone.svg" id="2_phone_icon"]
+[ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_toast"]
 bg_color = Color(0.16, 0.13, 0.18, 0.95)
@@ -20,6 +21,7 @@ content_margin_right = 6.0
 content_margin_bottom = 3.0
 
 [node name="NotificationToast" type="Control"]
+theme = ExtResource("100_theme")
 visible = false
 custom_minimum_size = Vector2(164, 32)
 mouse_filter = 2

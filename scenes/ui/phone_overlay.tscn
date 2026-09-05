@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/phone_overlay.gd" id="1_phone"]
+[ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_phone"]
 bg_color = Color(0.16, 0.13, 0.18, 0.92)
@@ -15,6 +16,7 @@ corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
 [node name="PhoneOverlay" type="Control"]
+theme = ExtResource("100_theme")
 visible = false
 layout_mode = 3
 anchors_preset = 15

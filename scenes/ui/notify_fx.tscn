@@ -1,8 +1,10 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/notify_fx.gd" id="1_fx"]
+[ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
 
 [node name="NotifyFx" type="Control"]
+theme = ExtResource("100_theme")
 visible = false
 custom_minimum_size = Vector2(24, 30)
 mouse_filter = 2

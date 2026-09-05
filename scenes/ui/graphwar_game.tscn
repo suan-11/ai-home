@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/graphwar_game.gd" id="1_game"]
+[ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tutorial"]
 bg_color = Color(0.04, 0.04, 0.06, 0.98)
@@ -15,6 +16,7 @@ corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
 [node name="GraphwarGame" type="Control"]
+theme = ExtResource("100_theme")
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
