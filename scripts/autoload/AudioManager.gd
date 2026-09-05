@@ -1,10 +1,11 @@
 extends Node
-## P4 BGM：从用户自备的 assets/bgm/ 文件夹读取背景音乐。
-## - 支持格式：wav / ogg / mp3 / flac（Godot 导入后可直接播放）
-## - 读取全部文件 → 按文件名排序 → 循环轮播；文件夹为空则**不播放**
+## P4 BGM：扫描「用户自备」的背景音乐文件夹。
+## 查找顺序：① 可执行文件旁 assets/bgm/（打包版，玩家可放）② res://assets/bgm（编辑器开发）③ user://bgm（备用）
+## - 支持格式：wav / ogg / mp3 / flac
+## - 读取全部文件 → 按文件名排序 → 循环轮播；全部为空则**不播放**
 ## - 音量 / 静音跟随 ConfigManager audio 设置（设置界面「音频」页即时生效）
 
-const BGM_DIR := "res://assets/bgm"
+const BGM_DIR_RES := "res://assets/bgm"
 const SUPPORTED_EXTS := ["wav", "ogg", "mp3", "flac"]
 
 var _bgm: AudioStreamPlayer = null
@@ -20,11 +21,25 @@ func _ready() -> void:
 	apply_audio_settings()
 
 
-## 扫描 assets/bgm/，收集支持的音频并按文件名排序。
+## 扫描各 BGM 根目录，收集支持的音频并按文件名排序。
 func _load_playlist() -> void:
 	_playlist = []
 	_index = 0
-	var dir := DirAccess.open(BGM_DIR)
+	for root in _bgm_roots():
+		_collect_dir(root)
+
+
+## 查找顺序：打包版 exe 旁 assets/bgm/ > 开发版 res://assets/bgm > user://bgm（备用）。
+func _bgm_roots() -> Array[String]:
+	var roots: Array[String] = []
+	roots.append(OS.get_executable_path().get_base_dir().path_join("assets").path_join("bgm"))
+	roots.append(BGM_DIR_RES)
+	roots.append("user://bgm")
+	return roots
+
+
+func _collect_dir(dir_path: String) -> void:
+	var dir := DirAccess.open(dir_path)
 	if dir == null:
 		return
 	dir.list_dir_begin()
@@ -37,11 +52,28 @@ func _load_playlist() -> void:
 	dir.list_dir_end()
 	files.sort()
 	for file_name in files:
-		var stream = load("%s/%s" % [BGM_DIR, file_name])
+		var stream := _load_stream(dir_path.path_join(file_name))
 		if stream == null:
 			continue
 		_setup_loop(stream)
 		_playlist.append(stream)
+
+
+## res:// / user:// 直接 load；外部绝对路径按扩展名显式加载。
+func _load_stream(path: String) -> AudioStream:
+	if path.begins_with("res://") or path.begins_with("user://"):
+		var res = load(path)
+		return res if res is AudioStream else null
+	match path.get_extension().to_lower():
+		"wav":
+			return AudioStreamWAV.load_from_file(path)
+		"ogg":
+			return AudioStreamOggVorbis.load_from_file(path)
+		"mp3":
+			return AudioStreamMP3.load_from_file(path)
+		"flac":
+			return AudioStreamWAV.load_from_file(path)
+	return null
 
 
 func _is_supported(file_name: String) -> bool:
