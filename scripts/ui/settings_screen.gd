@@ -52,6 +52,10 @@ func _ready() -> void:
 	temp_slider.value_changed.connect(_on_temp_slider_changed)
 
 	_load_values()
+	# 音频控件即时生效（BGM/静音直接应用，SFX 保存时随配置生效）
+	bgm_slider.value_changed.connect(_on_bgm_slider_changed)
+	sfx_slider.value_changed.connect(_on_sfx_slider_changed)
+	muted_check.toggled.connect(_on_muted_toggled)
 	_show_tab(TAB_GENERAL)
 
 
@@ -161,6 +165,20 @@ func _on_temp_slider_changed(_value: float) -> void:
 
 func _update_temp_value() -> void:
 	temp_value_label.text = "%.2f" % temp_slider.value
+
+
+func _on_bgm_slider_changed(value: float) -> void:
+	ConfigManager.set_value("audio", "bgm_volume", value)
+	AudioManager.apply_audio_settings()
+
+
+func _on_sfx_slider_changed(value: float) -> void:
+	ConfigManager.set_value("audio", "sfx_volume", value)
+
+
+func _on_muted_toggled(value: bool) -> void:
+	ConfigManager.set_value("audio", "muted", value)
+	AudioManager.apply_audio_settings()
 
 
 func _on_save_pressed() -> void:

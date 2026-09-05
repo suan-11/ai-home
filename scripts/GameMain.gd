@@ -262,8 +262,13 @@ func _on_phone_action(action_name: String) -> void:
 
 
 func _play_notify_sound() -> void:
-	if _notify_player != null and _notify_player.stream != null:
-		_notify_player.play()
+	if _notify_player == null or _notify_player.stream == null:
+		return
+	if bool(ConfigManager.get_value("audio", "muted", false)):
+		return
+	var volume := clampf(float(ConfigManager.get_value("audio", "sfx_volume", 0.8)), 0.0, 1.0)
+	_notify_player.volume_db = linear_to_db(volume) if volume > 0.0 else -80.0
+	_notify_player.play()
 
 
 func _move_to_furniture_and_trigger(interaction_name: String) -> void:

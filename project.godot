@@ -27,6 +27,7 @@ ConfigManager="*res://scripts/autoload/ConfigManager.gd"
 MemoryManager="*res://scripts/autoload/MemoryManager.gd"
 AIConnector="*res://scripts/autoload/AIConnector.gd"
 StatusManager="*res://scripts/autoload/StatusManager.gd"
+AudioManager="*res://scripts/autoload/AudioManager.gd"
 
 [display]
 
