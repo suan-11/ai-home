@@ -217,6 +217,7 @@ func _setup_screen_signals(screen_id: String, screen: Control) -> void:
 			screen.graphwar_requested.connect(open_graphwar)
 			screen.tictactoe_requested.connect(open_tictactoe)
 			screen.blackjack_requested.connect(open_blackjack)
+			screen.snake_requested.connect(open_snake)
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
 		SCREEN_GOMOKU:
 			screen.back_requested.connect(func() -> void: go_back(Transition.SLIDE_RIGHT))
