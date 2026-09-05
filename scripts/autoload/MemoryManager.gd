@@ -195,10 +195,18 @@ func build_chat_context(char_id: String, system_prompt: String) -> Array:
 	for entry in mem["short_term"]:
 		if entry is Dictionary:
 			messages.append({"role": entry["role"], "content": entry["content"]})
-	var affection := int(GameManager.get_affection(char_id))
+	var level := GameManager.get_affection_level(char_id)
+	var rank := GameManager.get_affection_rank_name(char_id)
+	var tone := "自然亲近"
+	if level >= 5:
+		tone = "极其亲密、如家人般依赖"
+	elif level >= 3:
+		tone = "亲近、会主动撒娇和依赖"
+	elif level >= 2:
+		tone = "熟络的好友，轻松自然"
 	messages.append({
 		"role": "system",
-		"content": "当前%s对你的好感度：%d/100。只需要在语气和细节上轻微体现（更亲近或略显生分），不要刻意谈论数字。" % [_display_name(char_id), affection],
+		"content": "当前%s与你的好感等级：Lv.%d「%s」（%s）。气质和话语要符合该亲近程度，但不要刻意谈论等级或数字。" % [_display_name(char_id), level, rank, tone],
 	})
 	return messages
 

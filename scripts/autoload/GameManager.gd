@@ -1,14 +1,25 @@
 extends Node
-## 全局角色状态：好感度（0-100）与每日变化记录。
+## 全局角色状态：好感等级系统（EXP 累积，无上限）与每日变化记录。
 ## 数据保存到 user://game.json。
+## 2026-09-05：由 0-100 好感度改为「好感等级」——Lv1 朋友 → Lv6 家人；
+## 起点即「朋友」等级（新角色默认 EXP=110），旧存档自动迁移（旧值 ×6、保底 110），不再从陌生开始。
 
 signal affection_changed(char_id: String, value: int, reason: String)
+signal affection_level_up(char_id: String, level: int)
 signal current_char_changed(char_id: String)
 
 const GAME_PATH := "user://game.json"
 const CHAT_DAILY_CAP := 10
-const DEFAULT_AFFECTION := 50
+## 起始好感 EXP = Lv1「朋友」门槛（用户要求：开档至少是朋友，不从陌生开始）
+const DEFAULT_AFFECTION := 110
 const DEFAULT_CHAR_ID := "char_03"
+
+## 好感等级表（2026-09-05；起点=朋友）
+## 累计 EXP 阈值；日常约 12~20 EXP/天 → Lv3 约 2 周、Lv6 约 2.5~3 个月，形成成长粘性。
+const RANK_NAMES: Array[String] = ["朋友", "好友", "亲近", "知心", "挚友", "家人"]
+const RANK_THRESHOLDS: Array[int] = [110, 240, 430, 700, 1100, 1700]
+## 旧存档（affection 0-100）→ EXP 的换算倍率：旧 50 ≈ 300 EXP ≈ Lv2 中段；迁移保底 Lv1「朋友」。
+const LEGACY_AFFECTION_TO_EXP := 6
 
 ## 当前角色 id（保留原名以兼容旧引用；统一用 get_current_char_id() 读取）。
 var CURRENT_CHAR_ID: String = DEFAULT_CHAR_ID
@@ -67,9 +78,45 @@ func today() -> String:
 	return Time.get_date_string_from_system()
 
 
+## ---------------- 好感等级（EXP + Lv1~Lv8） ----------------
+
 func get_affection(char_id: String) -> int:
+	## 兼容旧调用：返回当前好感 EXP 值。
+	return get_affection_exp(char_id)
+
+
+func get_affection_exp(char_id: String) -> int:
 	var char_data := _get_char(char_id)
-	return int(char_data.get("affection", DEFAULT_AFFECTION))
+	return int(char_data.get("affection_exp", 0))
+
+
+func get_affection_level(char_id: String) -> int:
+	return _level_for_exp(get_affection_exp(char_id))
+
+
+func get_affection_rank_name(char_id: String) -> String:
+	return RANK_NAMES[get_affection_level(char_id) - 1]
+
+
+## 下一级所需累计 EXP；已满级返回 0。
+func get_affection_next_exp(char_id: String) -> int:
+	var level := get_affection_level(char_id)
+	if level >= RANK_THRESHOLDS.size():
+		return 0
+	return RANK_THRESHOLDS[level]
+
+
+## 当前等级内进度 0.0~1.0（满级恒为 1.0）。
+func get_affection_progress(char_id: String) -> float:
+	var level := get_affection_level(char_id)
+	if level >= RANK_THRESHOLDS.size():
+		return 1.0
+	var exp := get_affection_exp(char_id)
+	var prev := RANK_THRESHOLDS[level - 1]
+	var span := RANK_THRESHOLDS[level] - prev
+	if span <= 0:
+		return 1.0
+	return clampf(float(exp - prev) / float(span), 0.0, 1.0)
 
 
 func get_daily_log(char_id: String, date: String) -> Dictionary:
@@ -89,13 +136,15 @@ func add_affection(char_id: String, delta: int, reason: String, source: String) 
 	if delta == 0:
 		return 0
 	var char_data := _get_char(char_id)
-	var old := int(char_data.get("affection", DEFAULT_AFFECTION))
-	var new_value := clampi(old + delta, 0, 100)
-	var applied := new_value - old
+	var old_exp := int(char_data.get("affection_exp", 0))
+	var old_level := _level_for_exp(old_exp)
+	var new_exp := maxi(old_exp + delta, 0)  # 无上限（等级系统），仅防负数
+	var applied := new_exp - old_exp
 	if applied == 0:
 		return 0
 
-	char_data["affection"] = new_value
+	char_data["affection_exp"] = new_exp
+	char_data["affection"] = new_exp  # 兼容旧字段读取
 	var date := today()
 	var daily: Dictionary = char_data["daily"]
 	if not daily.has(date):
@@ -110,7 +159,10 @@ func add_affection(char_id: String, delta: int, reason: String, source: String) 
 		"time": int(Time.get_unix_time_from_system()),
 	})
 	_save()
-	affection_changed.emit(char_id, new_value, reason)
+	affection_changed.emit(char_id, new_exp, reason)
+	var new_level := _level_for_exp(new_exp)
+	if new_level > old_level:
+		affection_level_up.emit(char_id, new_level)
 	return applied
 
 
@@ -197,10 +249,24 @@ func _get_char(char_id: String) -> Dictionary:
 	var chars: Dictionary = _game["characters"]
 	if not chars.has(char_id):
 		chars[char_id] = {
-			"affection": DEFAULT_AFFECTION,
+			"affection_exp": DEFAULT_AFFECTION,
 			"daily": {},
 			"interactions": {},
 			"usage": {},
 		}
 		_save()
-	return chars[char_id]
+	var char_data: Dictionary = chars[char_id]
+	# 旧存档迁移：仅有 affection(0-100) 时换算为 EXP（换算后保底「朋友」等级）
+	if not char_data.has("affection_exp"):
+		var legacy := int(char_data.get("affection", DEFAULT_AFFECTION))
+		char_data["affection_exp"] = maxi(legacy * LEGACY_AFFECTION_TO_EXP, DEFAULT_AFFECTION)
+		_save()
+	return char_data
+
+
+func _level_for_exp(exp: int) -> int:
+	var level := 1
+	for i in range(RANK_THRESHOLDS.size()):
+		if exp >= RANK_THRESHOLDS[i]:
+			level = i + 1
+	return level

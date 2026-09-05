@@ -88,9 +88,13 @@ func _add_character_row(info: Dictionary, is_current: bool) -> void:
 	hbox.add_child(vbox)
 
 	var name_label := Label.new()
-	var affection := GameManager.get_affection(id)
+	var lv := GameManager.get_affection_level(id)
+	var rank := GameManager.get_affection_rank_name(id)
+	var exp := GameManager.get_affection_exp(id)
+	var next := GameManager.get_affection_next_exp(id)
+	var progress_text := "MAX" if next <= 0 else "%d/%d" % [exp, next]
 	var suffix := "（当前）　" if is_current else "　"
-	name_label.text = "%s%s好感 %d/100" % [str(info.get("display_name", id)), suffix, affection]
+	name_label.text = "%s%s好感 Lv.%d %s · %s" % [str(info.get("display_name", id)), suffix, lv, rank, progress_text]
 	vbox.add_child(name_label)
 
 	var desc_label := Label.new()

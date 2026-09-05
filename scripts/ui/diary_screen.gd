@@ -39,10 +39,14 @@ func _draw() -> void:
 
 
 func _refresh() -> void:
-	var affection := GameManager.get_affection(_char_id)
+	var lv := GameManager.get_affection_level(_char_id)
+	var rank := GameManager.get_affection_rank_name(_char_id)
+	var exp := GameManager.get_affection_exp(_char_id)
+	var next := GameManager.get_affection_next_exp(_char_id)
+	var exp_text := "MAX" if next <= 0 else "%d/%d" % [exp, next]
 	var chat_gain := GameManager.get_today_chat_gain(_char_id)
-	info_label.text = "好感度 %d/100　今日聊天好感 %d/%d" % [
-		affection, chat_gain, GameManager.CHAT_DAILY_CAP,
+	info_label.text = "好感 Lv.%d %s（%s EXP）　今日聊天好感 %d/%d" % [
+		lv, rank, exp_text, chat_gain, GameManager.CHAT_DAILY_CAP,
 	]
 	date_label.text = _date
 	var diary := MemoryManager.get_diary(_char_id, _date)

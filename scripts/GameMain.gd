@@ -113,6 +113,7 @@ func _ready() -> void:
 	play_together_button.pressed.connect(_on_play_together_pressed)
 	$UI/CharacterButton.pressed.connect(_on_character_button_pressed)
 	GameManager.current_char_changed.connect(_on_current_char_changed)
+	GameManager.affection_level_up.connect(_on_affection_level_up)
 	_apply_character(GameManager.get_current_char_id())
 
 	_bubble = BUBBLE_SCENE.instantiate()
@@ -245,6 +246,21 @@ func _on_phone_notification() -> void:
 		_toast.show_toast("%s 收到了新消息" % _char_name())
 	status_label.text = "%s收到了新消息！" % _char_name()
 	portrait_manager.set_expression("surprised", 1.5)
+
+
+func _on_affection_level_up(char_id: String, level: int) -> void:
+	## 好感升级反馈：提示音 + 顶部横幅 + 角色台词 + 开心立绘（仅当前角色）
+	if char_id != GameManager.CURRENT_CHAR_ID:
+		return
+	var rank := GameManager.RANK_NAMES[level - 1]
+	_play_notify_sound()
+	if _toast != null:
+		_toast.position = Vector2(292.0, 42.0)
+		_toast.show_toast("好感升级！你与%s现在是「%s」(Lv.%d)" % [_char_name(), rank, level])
+	if level >= 1 and level <= LEVEL_UP_LINES.size():
+		_bubble_show(LEVEL_UP_LINES[level - 1], 2.6)
+	portrait_manager.set_expression("happy", 2.5)
+	status_label.text = "好感升级：Lv.%d %s" % [level, rank]
 
 
 func _on_phone_action(action_name: String) -> void:
@@ -600,8 +616,18 @@ func _run_interaction(spec_id: String) -> void:
 ## ---------------- P1 吸引移动（点击引导 + 主动靠近） ----------------
 
 const ATTRACT_AFTER_DELAY := 0.4   # 反应动作后出发的停顿
-const ATTRACT_AFFECT_CHANCE_HIGH := 0.9
-const ATTRACT_AFFECT_CHANCE_DEFAULT := 0.75
+const ATTRACT_AFFECT_CHANCE_HIGH := 0.92
+const ATTRACT_AFFECT_CHANCE_DEFAULT := 0.85
+
+## 好感升级台词（按等级序号：1 朋友 → 6 家人）
+const LEVEL_UP_LINES := [
+	"好喔，以后就是朋友啦！",
+	"嘻嘻，我们是好朋友啦！",
+	"越来越喜欢和你待在一起了～",
+	"知心话只想对你说。",
+	"你是我最重要的人之一。",
+	"谢谢你一直陪着我。",
+]
 
 
 func _attract_to_cell(cell: Vector2i) -> void:
@@ -662,12 +688,12 @@ func _attract_to_furniture(furniture: Dictionary) -> void:
 
 
 func _will_respond() -> bool:
-	## 好感度影响“被吸引”意愿：≥70 必应；≥50 90%；其余 75%。
-	var affection := GameManager.get_affection(GameManager.CURRENT_CHAR_ID)
+	## 好感等级影响“被吸引”意愿：Lv5+（挚友/家人）必应；Lv3-4（亲近/知心）92%；其余（朋友/好友）85%。
+	var level := GameManager.get_affection_level(GameManager.CURRENT_CHAR_ID)
 	var chance := ATTRACT_AFFECT_CHANCE_DEFAULT
-	if affection >= 70:
+	if level >= 5:
 		chance = 1.0
-	elif affection >= 50:
+	elif level >= 3:
 		chance = ATTRACT_AFFECT_CHANCE_HIGH
 	return randf() <= chance
 
