@@ -17,6 +17,13 @@ signal back_requested
 		if _button != null:
 			_button.text = value
 
+## 标题文字颜色（默认深棕，适配暖屋纸面；用作深色标题栏时可覆盖为浅色）
+@export var title_color := Color(0.290196, 0.231373, 0.2):
+	set(value):
+		title_color = value
+		if _title_label != null:
+			_title_label.add_theme_color_override("font_color", value)
+
 var _title_label: Label
 var _button: Button
 
@@ -28,6 +35,7 @@ func _ready() -> void:
 	_title_label.text = title_text
 	_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_title_label.add_theme_color_override("font_color", title_color)
 	add_child(_title_label)
 
 	_button = Button.new()

@@ -1,7 +1,14 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/desktop_screen.gd" id="1_desktop"]
 [ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_empty"]
+bg_color = Color(0.968627, 0.92549, 0.862745, 0.5)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="DesktopScreen" type="Control"]
 theme = ExtResource("100_theme")
@@ -47,6 +54,7 @@ text = "日记"
 [node name="EmptySlot" type="Panel" parent="Grid"]
 layout_mode = 2
 custom_minimum_size = Vector2(180, 95)
+theme_override_styles/panel = SubResource("StyleBoxFlat_empty")
 
 [node name="InfoLabel" type="Label" parent="."]
 layout_mode = 1
@@ -58,5 +66,6 @@ offset_left = 24.0
 offset_top = -38.0
 offset_right = -24.0
 offset_bottom = -10.0
+theme_override_colors/font_color = Color(0.290196, 0.231373, 0.2, 1)
 text = "点击一个功能"
 horizontal_alignment = 1

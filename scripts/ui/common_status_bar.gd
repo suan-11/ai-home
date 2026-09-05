@@ -7,7 +7,7 @@ func _init() -> void:
 	horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	custom_minimum_size = Vector2(0, UIConstants.STATUS_H)
-	set_theme_color_override(
+	add_theme_color_override(
 		"font_color",
 		Color(0.564706, 0.505882, 0.427451)
 	)

@@ -1,7 +1,24 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/ui/game_select.gd" id="1_select"]
+[ext_resource type="Script" path="res://scripts/ui/common_title_bar.gd" id="2_titlebar"]
+[ext_resource type="Script" path="res://scripts/ui/common_status_bar.gd" id="3_statusbar"]
 [ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_window"]
+bg_color = Color(0.984314, 0.952941, 0.894118, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.85098, 0.72549, 0.54902, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+shadow_color = Color(0.290196, 0.231373, 0.2, 0.18)
+shadow_size = 3
+shadow_offset = Vector2(0, 2)
 
 [node name="GameSelect" type="Control"]
 theme = ExtResource("100_theme")
@@ -25,17 +42,20 @@ offset_right = -10.0
 offset_bottom = -10.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_window")
 
-[node name="Title" type="Label" parent="WindowPanel"]
+[node name="TitleBar" type="HBoxContainer" parent="WindowPanel"]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 14.0
+offset_left = 10.0
 offset_top = 8.0
-offset_right = -14.0
-offset_bottom = 32.0
-text = "游戏中心"
-horizontal_alignment = 1
+offset_right = -10.0
+offset_bottom = 34.0
+grow_horizontal = 2
+script = ExtResource("2_titlebar")
+title_text = "游戏中心"
+button_text = "返回"
 
 [node name="ScrollContainer" type="ScrollContainer" parent="WindowPanel"]
 layout_mode = 1
@@ -55,49 +75,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 8
 
-[node name="GomokuButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "五子棋"
-
-[node name="GraphwarButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Graphwar 函数对打"
-
-[node name="TictactoeButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "井字棋"
-
-[node name="BlackjackButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "21点"
-
-[node name="SnakeButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "贪吃蛇"
-
-[node name="FutureButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "更多游戏（持续添加中…）"
-
-[node name="BackButton" type="Button" parent="WindowPanel/ScrollContainer/GameList"]
-custom_minimum_size = Vector2(0, 36)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "返回桌面"
-
-[node name="StatusLabel" type="Label" parent="WindowPanel"]
+[node name="StatusBar" type="Label" parent="WindowPanel"]
 layout_mode = 1
 anchors_preset = 12
 anchor_top = 1.0
@@ -107,5 +85,7 @@ offset_left = 14.0
 offset_top = -38.0
 offset_right = -14.0
 offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+script = ExtResource("3_statusbar")
 text = "请选择游戏（列表可滚动）"
-horizontal_alignment = 1
