@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/GameMain.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/char/char_controller.gd" id="2_char"]
@@ -8,6 +8,18 @@
 [ext_resource type="Script" path="res://scripts/ui/portrait_manager.gd" id="6_portrait_mgr"]
 [ext_resource type="Texture2D" path="res://assets/ui/icon_character.svg" id="7_char_icon"]
 [ext_resource type="Theme" path="res://theme/ui_theme.tres" id="100_theme"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_status"]
+bg_color = Color(0.984314, 0.952941, 0.894118, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.85098, 0.72549, 0.54902, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_main")
@@ -22,20 +34,31 @@ script = ExtResource("2_char")
 
 [node name="UI" type="CanvasLayer" parent="."]
 
-[node name="StatusLabel" type="Label" parent="UI"]
-theme = ExtResource("100_theme")
+[node name="StatusPanel" type="Panel" parent="UI"]
+layout_mode = 1
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 350.0
 offset_bottom = 36.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_status")
+
+[node name="StatusLabel" type="Label" parent="UI"]
+theme = ExtResource("100_theme")
+offset_left = 14.0
+offset_top = 8.0
+offset_right = 344.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.290196, 0.231373, 0.2, 1)
 text = "Phase 1 加载中…"
+vertical_alignment = 1
 
 [node name="SettingsButton" type="Button" parent="UI"]
 theme = ExtResource("100_theme")
-offset_left = 360.0
+offset_left = 428.0
 offset_top = 8.0
 offset_right = 472.0
-offset_bottom = 36.0
+offset_bottom = 52.0
 tooltip_text = "设置"
 icon = ExtResource("4_settings_icon")
 icon_alignment = 1
@@ -43,10 +66,10 @@ text = ""
 
 [node name="PhoneButton" type="Button" parent="UI"]
 theme = ExtResource("100_theme")
-offset_left = 360.0
-offset_top = 40.0
+offset_left = 428.0
+offset_top = 56.0
 offset_right = 472.0
-offset_bottom = 68.0
+offset_bottom = 100.0
 tooltip_text = "手机"
 icon = ExtResource("5_phone_icon")
 icon_alignment = 1
@@ -54,10 +77,10 @@ text = ""
 
 [node name="CharacterButton" type="Button" parent="UI"]
 theme = ExtResource("100_theme")
-offset_left = 360.0
-offset_top = 72.0
+offset_left = 428.0
+offset_top = 104.0
 offset_right = 472.0
-offset_bottom = 100.0
+offset_bottom = 148.0
 tooltip_text = "角色"
 icon = ExtResource("7_char_icon")
 icon_alignment = 1
@@ -66,9 +89,9 @@ text = ""
 [node name="FurnitureButton" type="Button" parent="UI"]
 theme = ExtResource("100_theme")
 offset_left = 360.0
-offset_top = 104.0
+offset_top = 156.0
 offset_right = 472.0
-offset_bottom = 132.0
+offset_bottom = 184.0
 text = "家具介绍"
 
 [node name="PlayTogetherButton" type="Button" parent="UI"]
