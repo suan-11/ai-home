@@ -1,17 +1,17 @@
 extends Control
-## 聊天应用：与梅尔对话。
+## 聊天应用：与当前角色对话。
 ## - 记忆：MemoryManager 构建上下文（人设 + 长期记忆 + 近期对话），每轮自动记录
-## - 好感度：回复成功后由 AI 按人设判断本轮是否 +1（每日上限 GameManager.CHAT_DAILY_CAP）
+## - 好感 / 心情：与正文由**同一次请求**返回（affection / mood_delta），每日好感上限 GameManager.CHAT_DAILY_CAP
 
 signal back_requested
 
 const CHAR_ID := "char_03"
+const REPLY_INSTRUCTION := "请基于上面这轮对话回复主人，并顺便判断本轮是否产生好感。只输出一个 JSON 对象（不要输出任何其他文字，不要用 Markdown 代码块），且必须符合 JSON 语法：键和字符串用双引号，布尔值用 true/false（不加引号），最后不要逗号。格式：{\"reply\":\"回复给主人的内容\",\"affection\":true或false,\"reason\":\"10字以内好感理由\",\"mood_delta\":-2到+3的整数（心情变化；缺省按+1）}。示例：{\"reply\":\"好呀，来玩！\",\"affection\":true,\"reason\":\"愿意陪主人玩\",\"mood_delta\":2}。"
 
 var _char_id := CHAR_ID
 var _char_name := "梅尔"
 var _messages: Array = []
 var _waiting := false
-var _judging := false
 
 @onready var message_label: RichTextLabel = $ScrollContainer/MessageLabel
 @onready var input_edit: LineEdit = $BottomBar/InputEdit
@@ -27,8 +27,6 @@ func _ready() -> void:
 	_messages = MemoryManager.build_chat_context(_char_id, system_prompt)
 	_show_history()
 
-	AIConnector.chat_reply.connect(_on_chat_reply)
-	AIConnector.error_occurred.connect(_on_chat_error)
 	$BackButton.pressed.connect(_on_back_pressed)
 	send_button.pressed.connect(_on_send_pressed)
 	input_edit.text_submitted.connect(func(_text: String) -> void: _on_send_pressed())
@@ -50,7 +48,7 @@ func _show_history() -> void:
 
 
 func _on_send_pressed() -> void:
-	if _waiting or _judging:
+	if _waiting:
 		return
 	var text := input_edit.text.strip_edges()
 	if text.is_empty():
@@ -62,51 +60,33 @@ func _on_send_pressed() -> void:
 	_waiting = true
 	send_button.disabled = true
 	input_edit.editable = false
-	AIConnector.send_chat(_messages)
+	# 正文 + 好感 / 心情一次返回（原实现要发两次请求，耗时与成本翻倍）
+	var request_messages: Array = _messages.duplicate(true)
+	request_messages.append({"role": "user", "content": REPLY_INSTRUCTION})
+	AIConnector.request_json(request_messages, _on_chat_reply, _on_chat_error)
 
 
-func _on_chat_reply(text: String) -> void:
+func _on_chat_reply(data: Dictionary) -> void:
 	_waiting = false
-	_messages.append({"role": "assistant", "content": text})
-	MemoryManager.record_chat(_char_id, "assistant", text)
-	MemoryManager.maybe_summarize(_char_id)
-	_append_message(_char_name, text)
-	_start_affection_judgement()
-
-
-func _start_affection_judgement() -> void:
-	if _judging:
-		return
-	_judging = true
-	send_button.disabled = true
-	input_edit.editable = false
-	var judge_messages: Array = []
-	for msg in _messages:
-		judge_messages.append(msg)
-	judge_messages.append({
-		"role": "user",
-		"content": "【好感度判定】基于刚才这轮对话，判断%s是否对主人产生好感（可+1）：被夸奖、关心、投喂、分享、一起玩、认真倾听等会加分；无意义寒暄、命令、冒犯不会；同时给出这轮对话对%s心情的影响 mood_delta（-2 到 +3 的整数）。" % [_char_name, _char_name]
-			+ "请只输出一个 JSON 对象（不要输出任何其他文字，不要用 Markdown 代码块），且必须符合 JSON 语法：键和字符串用双引号，布尔值用 true/false（不加引号），例如："
-			+ "{\"affection\":true,\"reason\":\"被夸奖了\",\"mood_delta\":2}。affection 只能是 true 或 false，reason 是 10 字以内理由。",
-	})
-	AIConnector.request_json(
-		judge_messages,
-		_on_affection_judged,
-		_on_affection_error
-	)
-
-
-func _on_affection_judged(data: Dictionary) -> void:
-	_judging = false
 	send_button.disabled = false
 	input_edit.editable = true
+
+	var reply := str(data.get("reply", "……")).strip_edges()
+	if reply.is_empty():
+		reply = "……"
+	_messages.append({"role": "assistant", "content": reply})
+	MemoryManager.record_chat(_char_id, "assistant", reply)
+	MemoryManager.maybe_summarize(_char_id)
+	_append_message(_char_name, reply)
+
+	# 与正文同一次返回的好感 / 心情判定
+	StatusManager.apply_delta(0, _parse_mood_delta(data), 0)
 	var eligible := _parse_affection(data.get("affection", false))
 	var reason := str(data.get("reason", "")).strip_edges()
 	if reason.is_empty():
 		reason = "对话内容"
 	if reason.length() > 20:
 		reason = reason.substr(0, 20)
-	StatusManager.apply_delta(0, _parse_mood_delta(data), 0)
 	if eligible and GameManager.add_chat_affection(_char_id, true, reason):
 		var gain := GameManager.get_today_chat_gain(_char_id)
 		_append_message(
@@ -136,13 +116,6 @@ func _parse_mood_delta(data: Dictionary) -> int:
 	elif value is String:
 		delta = int((value as String).strip_edges()) if (value as String).is_valid_int() else 1
 	return clampi(delta, -2, 3)
-
-
-func _on_affection_error(_message: String) -> void:
-	_judging = false
-	send_button.disabled = false
-	input_edit.editable = true
-	_append_message("系统", "（好感判定未完成，本轮跳过）")
 
 
 func _on_chat_error(message: String) -> void:
