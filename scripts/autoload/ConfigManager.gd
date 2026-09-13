@@ -76,5 +76,6 @@ func _default_config() -> Dictionary:
 			"model": "deepseek-chat",
 			"max_tokens": 512,
 			"temperature": 0.8,
+			"timeout_seconds": 60,
 		},
 	}
