@@ -32,21 +32,45 @@ var _hint_base_pos: Vector2 = Vector2.ZERO
 
 
 func _ready() -> void:
-	_char_id = GameManager.get_current_char_id()
-	_char_name = CharacterCatalog.get_display_name(_char_id)
 	_hint_base_pos = hint_label.position
-	$Panel/TitleLabel.text = "%s · 手机" % _char_name
-	var system_prompt := MemoryManager.get_persona_system(_char_id)
-	_messages = MemoryManager.build_chat_context(_char_id, system_prompt)
-	_show_history()
+	set_character(GameManager.get_current_char_id())
 	close_button.pressed.connect(close_overlay)
 	send_button.pressed.connect(_on_send_pressed)
 	input_edit.text_submitted.connect(func(_text: String) -> void: _on_send_pressed())
 
 
+## 角色切换：标题 / 人设 / 记忆上下文全部跟随当前角色；在途请求作废（回复会按 char_id 丢弃）。
+func set_character(char_id: String) -> void:
+	if char_id.is_empty():
+		return
+	var changed := char_id != _char_id
+	_char_id = char_id
+	_char_name = CharacterCatalog.get_display_name(char_id)
+	$Panel/TitleLabel.text = "%s · 手机" % _char_name
+	if changed:
+		_waiting = false
+		_finish_ui()
+	_refresh_context()
+
+
+## 重建 AI 上下文并重绘记录（本次运行的新对话已写入 MemoryManager，会一起刷新）。
+func _refresh_context() -> void:
+	_messages = MemoryManager.build_chat_context(
+		_char_id, MemoryManager.get_persona_system(_char_id)
+	)
+	message_label.text = ""
+	_show_history()
+
+
 func open_overlay() -> void:
 	if _is_open:
 		return
+	# 常驻单例：打开时同步当前角色与最新记忆（角色切换 / 电脑聊天后仍保持正确）
+	var current := GameManager.get_current_char_id()
+	if current != _char_id:
+		set_character(current)
+	elif not _waiting:
+		_refresh_context()
 	_is_open = true
 	visible = true
 	modulate.a = 0.0
@@ -78,11 +102,12 @@ func _on_send_pressed() -> void:
 	var text := input_edit.text.strip_edges()
 	if text.is_empty():
 		return
+	var sent_char := _char_id
 	input_edit.text = ""
 	_append_message("主人", text)
 	player_activity.emit()
 	_messages.append({"role": "user", "content": text})
-	MemoryManager.record_chat(_char_id, "user", text)
+	MemoryManager.record_chat(sent_char, "user", text)
 	_waiting = true
 	send_button.disabled = true
 	input_edit.editable = false
@@ -90,18 +115,20 @@ func _on_send_pressed() -> void:
 
 	# 1) 延迟：角色“收到消息”
 	await get_tree().create_timer(RECEIVE_DELAY).timeout
+	if not _waiting or sent_char != _char_id:
+		return  # 等待期间已切换角色 / 状态已重置
 	notification_triggered.emit()
 	_enqueue_hint("%s收到了消息！" % _char_name)
 
 	# 2) 小停顿后开始回复（触发 AI 结构化返回）
 	await get_tree().create_timer(REPLY_DELAY).timeout
-	if not _waiting:
+	if not _waiting or sent_char != _char_id:
 		return
 	_enqueue_hint("正在输入…")
-	_request_ai()
+	_request_ai(sent_char)
 
 
-func _request_ai() -> void:
+func _request_ai(char_id: String) -> void:
 	var request_messages: Array = _messages.duplicate(true)
 	request_messages.append({
 		"role": "user",
@@ -114,10 +141,12 @@ func _request_ai() -> void:
 			+ "示例：{\"reply\":\"好呀，来玩！\",\"emotion\":\"happy\",\"action\":\"wave\",\"affection\":true,\"reason\":\"愿意陪主人玩\",\"mood_delta\":2}。"
 			+ "action 表示此刻想做的动作或想去的家具（sleep=床/read=书架/sit=椅子/watch=电视柜/rest=沙发/light=落地灯/water=盆栽/computer=电脑桌）。",
 	})
-	AIConnector.request_json(request_messages, _on_ai_reply, _on_ai_error)
+	AIConnector.request_json(request_messages, _on_ai_reply.bind(char_id), _on_ai_error)
 
 
-func _on_ai_reply(data: Dictionary) -> void:
+func _on_ai_reply(data: Dictionary, char_id: String) -> void:
+	if char_id != _char_id:
+		return  # 回复期间已切换角色：丢弃过期结果，避免记到新角色
 	_waiting = false
 	_finish_ui()
 	var reply := str(data.get("reply", "……"))

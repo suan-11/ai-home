@@ -359,6 +359,9 @@ func _apply_character(char_id: String) -> void:
 	if name_label != null:
 		name_label.text = CharacterCatalog.get_display_name(char_id)
 	StatusManager.set_character(char_id)
+	if _phone_overlay != null:
+		# 手机窗是常驻单例，必须跟随角色切换（否则标题/人设/记忆/好感会记到旧角色）
+		_phone_overlay.set_character(char_id)
 	_rebuild_interaction_menu()
 	status_label.text = "已切换为 %s" % CharacterCatalog.get_display_name(char_id)
 
@@ -1039,34 +1042,36 @@ func _setup_offline_settlement() -> void:
 	var speed := maxf(float(ConfigManager.get_value("general", "dev_state_speed", 1)), 1.0)
 	var threshold := OFFLINE_MIN_SECONDS / speed
 	var offline := StatusManager.get_offline_seconds()
+	var char_id := GameManager.get_current_char_id()
 	if offline >= threshold:
 		StatusManager.apply_offline_seconds(offline)
 		StatusManager.mark_seen()
-		_run_offline_ai_settlement(offline)
+		_run_offline_ai_settlement(offline, char_id)
 	else:
 		StatusManager.mark_seen()
 
 
-func _run_offline_ai_settlement(seconds: float) -> void:
-	var char_id := GameManager.CURRENT_CHAR_ID
+func _run_offline_ai_settlement(seconds: float, char_id: String) -> void:
 	var persona := MemoryManager.get_persona_system(char_id)
 	var context: Array = MemoryManager.build_chat_context(char_id, persona)
 	var hours := int(seconds / 3600.0)
 	var mins := int(seconds / 60.0) % 60
+	var char_name := CharacterCatalog.get_display_name(char_id)
 	var instruction := (
 		"主人在过去约%d小时%d分钟后回来陪你了（你独自生活了这么久）。"
-		+ "请以梅尔的身份，结合人设、记忆和当前状态：%s。\n只输出一个 JSON 对象（不要其他文字、不要 Markdown 代码块）："
+		+ "请以%s的身份，结合人设、记忆和当前状态：%s。\n只输出一个 JSON 对象（不要其他文字、不要 Markdown 代码块）："
 		+ "{\"satiety\":-10,\"fatigue\":10,\"mood\":5,\"affection\":0或1,\"message\":\"20字以内想对主人说的话\"}。\n"
 		+ "说明：satiety/fatigue 的自然变化已按离线时长先算过一次，这里输出这段经历带来的额外修正（整数，-10~+10）；"
 		+ "mood 由独立生活的经历决定（整数，-15~+15）；affection=1 表示因为想念主人而好感+1（当天好感最多+3）。"
-	) % [hours, mins, StatusManager.get_state_summary()]
-	instruction = instruction.replace("梅尔", _char_name())
+	) % [hours, mins, char_name, StatusManager.get_state_summary_for(char_id)]
 	context.append({"role": "user", "content": instruction})
-	AIConnector.request_json(context, _on_offline_settled, _on_offline_settle_error)
+	# 绑定请求时的 char_id：等待网络期间切换角色，结算也要落回原角色
+	AIConnector.request_json(context, _on_offline_settled.bind(char_id), _on_offline_settle_error.bind(char_id))
 
 
-func _on_offline_settled(data: Dictionary) -> void:
-	StatusManager.apply_delta(
+func _on_offline_settled(data: Dictionary, char_id: String) -> void:
+	StatusManager.apply_delta_to(
+		char_id,
 		_clamp_val(data.get("satiety"), 0, -10, 10),
 		_clamp_val(data.get("mood"), 0, -15, 15),
 		_clamp_val(data.get("fatigue"), 0, -10, 10)
@@ -1074,18 +1079,25 @@ func _on_offline_settled(data: Dictionary) -> void:
 	var message := str(data.get("message", "你回来啦…")).strip_edges()
 	if message.is_empty():
 		message = "你回来啦…"
-	_bubble_show(message, 4.0)
-	MemoryManager.record_daily_event(GameManager.CURRENT_CHAR_ID, "autonomy", "离线归来：" + message)
+	MemoryManager.record_daily_event(char_id, "autonomy", "离线归来：" + message)
 	var affection := _as_bool(data.get("affection", false))
-	if affection and StatusManager.add_autonomy_affection(1):
-		var applied := GameManager.add_affection(GameManager.CURRENT_CHAR_ID, 1, "离线想念", "offline")
-		if applied > 0:
-			status_label.text = "%s略带想念地望着你（好感 +1）" % _char_name()
-			return
-	status_label.text = "%s回来见你啦" % _char_name()
+	var gained := false
+	if affection and StatusManager.add_autonomy_affection_to(char_id, 1):
+		gained = GameManager.add_affection(char_id, 1, "离线想念", "offline") > 0
+
+	# 已切换角色：数据已按原角色落账，但不打扰当前角色的画面
+	if char_id != GameManager.get_current_char_id():
+		return
+	_bubble_show(message, 4.0)
+	if gained:
+		status_label.text = "%s略带想念地望着你（好感 +1）" % _char_name()
+	else:
+		status_label.text = "%s回来见你啦" % _char_name()
 
 
-func _on_offline_settle_error(_message: String) -> void:
+func _on_offline_settle_error(_message: String, char_id: String) -> void:
+	if char_id != GameManager.get_current_char_id():
+		return
 	_bubble_show("你不在的时候，%s过得安静又平淡…" % _char_name(), 3.5)
 	status_label.text = "离线期间%s独自生活（结算失败，已按时间自动计算）" % _char_name()
 

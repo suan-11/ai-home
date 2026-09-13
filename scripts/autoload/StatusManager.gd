@@ -100,12 +100,19 @@ func set_food(kind: String) -> void:
 
 
 func apply_delta(satiety: int = 0, mood: int = 0, fatigue: int = 0) -> void:
-	var st: Dictionary = _status[_char_id]
+	apply_delta_to(_char_id, satiety, mood, fatigue)
+
+
+## 指定角色加减状态（离线结算按请求时的 char_id 落账，避免切换角色污染数据）。
+func apply_delta_to(char_id: String, satiety: int = 0, mood: int = 0, fatigue: int = 0) -> void:
+	_ensure_defaults(char_id)
+	var st: Dictionary = _status[char_id]
 	st["satiety"] = clampi(int(st["satiety"]) + satiety, 0, 100)
 	st["mood"] = clampi(int(st["mood"]) + mood, 0, 100)
 	st["fatigue"] = clampi(int(st["fatigue"]) + fatigue, 0, 100)
 	_save()
-	status_changed.emit()
+	if char_id == _char_id:
+		status_changed.emit()
 
 
 func apply_float_delta(satiety: float = 0.0, mood: float = 0.0, fatigue: float = 0.0) -> void:
@@ -175,9 +182,15 @@ func try_autonomy_affection(amount: int = 1) -> bool:
 
 
 func add_autonomy_affection(amount: int = 1) -> bool:
-	## 不受概率限制；仅受每日上限约束（离线结算也走这里）。
+	return add_autonomy_affection_to(_char_id, amount)
+
+
+## 指定角色的自主好感计数（离线结算按请求时的 char_id 落账）。
+func add_autonomy_affection_to(char_id: String, amount: int = 1) -> bool:
+	## 不受概率限制；仅受每日上限约束。
+	_ensure_defaults(char_id)
 	var today := Time.get_date_string_from_system()
-	var st: Dictionary = _status[_char_id]
+	var st: Dictionary = _status[char_id]
 	if str(st.get("autonomy_date", "")) != today:
 		st["autonomy_date"] = today
 		st["autonomy_gain"] = 0
@@ -201,15 +214,23 @@ func get_today_autonomy_gain() -> int:
 
 
 func get_state_summary() -> String:
+	return get_state_summary_for(_char_id)
+
+
+## 指定角色的状态摘要（离线结算在请求期间可能已切换角色，需按 char_id 取）。
+func get_state_summary_for(char_id: String) -> String:
+	var st: Dictionary = _status.get(char_id, {})
+	var satiety := int(st.get("satiety", 70.0))
+	var fatigue := int(st.get("fatigue", 30.0))
+	var mood := int(st.get("mood", 60.0))
 	return "当前状态：饱食 %d/100（%s），疲惫 %d/100（%s），心情 %d/100（%s）" % [
-		get_satiety(), _satiety_desc(),
-		get_fatigue(), _fatigue_desc(),
-		get_mood(), _mood_desc(),
+		satiety, _satiety_desc(satiety),
+		fatigue, _fatigue_desc(fatigue),
+		mood, _mood_desc(mood),
 	]
 
 
-func _satiety_desc() -> String:
-	var v := get_satiety()
+func _satiety_desc(v: int) -> String:
 	if v < 30:
 		return "很饿，想找吃的"
 	if v < 60:
@@ -217,8 +238,7 @@ func _satiety_desc() -> String:
 	return "还饱着"
 
 
-func _fatigue_desc() -> String:
-	var v := get_fatigue()
+func _fatigue_desc(v: int) -> String:
 	if v > 75:
 		return "非常累，想休息"
 	if v > 50:
@@ -226,8 +246,7 @@ func _fatigue_desc() -> String:
 	return "精神不错"
 
 
-func _mood_desc() -> String:
-	var v := get_mood()
+func _mood_desc(v: int) -> String:
 	if v < 30:
 		return "心情低落"
 	if v < 55:
